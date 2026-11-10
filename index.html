@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TVS Now Redeem Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#fff7fb; --bg2:#ffffff; --card:#ffffff; --card2:#fff0f7; --line:#f6d6e6; --line2:#efc0d8;
+  --pink:#e6007e; --pink2:#ff2e88; --pinkSoft:rgba(230,0,126,.09); --mag:#b5179e; --vio:#7c3aed;
+  --ink:#1f1a26; --ink2:#4f4757; --mute:#8d8497; --no:#a39daa; --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
+  --r:16px; --shadow:0 6px 24px rgba(230,0,126,.08),0 1px 2px rgba(31,26,38,.04);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Kanit,system-ui,sans-serif;font-weight:300;font-size:14px}
+body{background:
+  radial-gradient(1100px 520px at 100% -10%,rgba(255,46,136,.16),transparent 60%),
+  radial-gradient(900px 480px at -10% 0%,rgba(181,23,158,.08),transparent 60%),
+  linear-gradient(180deg,#fff 0%,#fff7fb 40%,#fff3f9 100%);min-height:100vh}
+button,input,select{font-family:inherit}
+.num{font-variant-numeric:tabular-nums}
+/* login */
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;background:
+  radial-gradient(700px 450px at 50% 20%,rgba(255,46,136,.22),transparent 70%),
+  repeating-linear-gradient(90deg,rgba(230,0,126,.05) 0 1px,transparent 1px 42px),
+  repeating-linear-gradient(0deg,rgba(230,0,126,.05) 0 1px,transparent 1px 42px),#fff}
+.login-box{width:min(390px,92vw);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--line2);border-radius:22px;padding:34px 28px;box-shadow:0 30px 80px rgba(230,0,126,.18)}
+.brand{font-family:Orbitron,Kanit,sans-serif;font-weight:800;letter-spacing:.06em;color:var(--ink)}
+.brand .p{background:linear-gradient(90deg,var(--pink),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.login-box h1{margin:0 0 4px;font-size:24px}
+.login-box p{color:var(--ink2);margin:0 0 22px}
+.login-box input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line2);background:#fff;color:var(--ink);font-size:16px;letter-spacing:.1em;outline:none}
+.login-box input:focus{border-color:var(--pink);box-shadow:0 0 0 4px var(--pinkSoft)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:#fff;color:var(--ink2);padding:7px 12px;border-radius:10px;cursor:pointer;font-size:13px;white-space:nowrap;transition:.15s}
+.btn:hover{border-color:var(--pink);color:var(--pink)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.primary{background:linear-gradient(90deg,var(--pink2),var(--pink) 50%,var(--mag));border-color:transparent;color:#fff;font-weight:500;box-shadow:0 6px 18px rgba(230,0,126,.25)}
+.btn.primary:hover{filter:brightness(1.07);color:#fff}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:8px}
+.btn.on{border-color:var(--pink);background:var(--pinkSoft);color:var(--pink)}
+.login-box .btn{width:100%;justify-content:center;margin-top:14px;padding:12px;font-size:15px}
+.err{color:var(--bad);min-height:20px;margin-top:10px;font-size:13px}
+/* layout */
+header.top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);box-shadow:0 4px 20px rgba(230,0,126,.06)}
+header.top:before{content:"";display:block;height:3px;background:linear-gradient(90deg,var(--pink2),var(--mag),var(--vio),var(--pink2))}
+.topbar{display:flex;align-items:center;gap:16px;padding:10px 18px;flex-wrap:wrap}
+.topbar .brand{font-size:17px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:11px;cursor:pointer;color:var(--ink2);border:1px solid transparent;font-weight:400}
+.tab:hover{color:var(--pink)}
+.tab.active{color:#fff;background:linear-gradient(90deg,var(--pink2),var(--mag));box-shadow:0 6px 18px rgba(230,0,126,.28)}
+.spacer{flex:1}
+.who{color:var(--pink);font-size:11px;font-family:Orbitron,sans-serif;letter-spacing:.1em;border:1px solid var(--line2);padding:3px 8px;border-radius:20px}
+.datainfo{color:var(--mute);font-size:12px;padding:0 18px 8px}
+.datainfo b{color:var(--ink2);font-weight:400}
+main{padding:14px 18px 60px;max-width:1800px;margin:0 auto}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 18px 12px;border-top:1px solid var(--line)}
+.ms{position:relative}
+.ms-btn{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);background:#fff;color:var(--mute);padding:6px 10px;border-radius:10px;cursor:pointer;font-size:12.5px;max-width:230px}
+.ms-btn b{color:var(--ink);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-btn.act{border-color:var(--pink);background:var(--pinkSoft);color:var(--pink)}
+.ms-btn.act b{color:var(--pink);font-weight:500}
+.ms-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:50;width:300px;max-width:88vw;background:#fff;border:1px solid var(--line2);border-radius:14px;box-shadow:0 20px 50px rgba(230,0,126,.18);padding:8px;display:none}
+.ms.open .ms-pop{display:block}
+.ms-pop input{width:100%;padding:7px 9px;border-radius:9px;border:1px solid var(--line2);background:#fff;color:var(--ink);outline:none;margin-bottom:6px}
+.ms-acts{display:flex;gap:6px;margin-bottom:6px}
+.ms-list{max-height:300px;overflow:auto}
+.ms-opt{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer;font-size:12.5px}
+.ms-opt:hover{background:var(--card2)}
+.ms-opt input{accent-color:var(--pink);margin:0;width:auto}
+.ms-opt span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-opt i{font-style:normal;color:var(--mute);font-size:11px}
+.view{display:none}
+.view.active{display:block}
+/* cards */
+.grid{display:grid;gap:14px}
+.g-kpi{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.g-2{grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr))}
+.g-3{grid-template-columns:2fr 1fr 1fr}
+@media(max-width:1100px){.g-3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;min-width:0;box-shadow:var(--shadow)}
+.grid>.card{margin-bottom:0}
+.card-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card-h h3{margin:0;font-size:14.5px;font-weight:500;display:flex;align-items:center;gap:8px}
+.card-h h3 .tag{font-family:Orbitron,sans-serif;font-size:10px;color:#fff;background:linear-gradient(90deg,var(--pink2),var(--mag));padding:3px 7px;border-radius:7px;letter-spacing:.05em}
+.card-h .sub{color:var(--mute);font-size:12px}
+.card-h .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.card-b{padding:12px 14px}
+.card.collapsed .card-b{display:none}
+.card.collapsed .card-h{border-bottom:0}
+.card.full{position:fixed;inset:12px;z-index:80;margin:0;overflow:auto;box-shadow:0 0 0 100vmax rgba(31,26,38,.35)}
+.card.full .tbl-wrap{max-height:none}
+.kpi{padding:14px 16px;border-radius:var(--r);background:#fff;border:1px solid var(--line);position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.kpi:before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--pink2),var(--mag),transparent)}
+.kpi .l{color:var(--ink2);font-size:12.5px}
+.kpi .v{font-size:28px;font-weight:600;margin-top:2px;letter-spacing:.01em}
+.kpi .s{color:var(--mute);font-size:12px}
+.kpi.hl{background:linear-gradient(135deg,var(--pink2),var(--pink) 55%,var(--mag));border-color:transparent;box-shadow:0 12px 30px rgba(230,0,126,.3)}
+.kpi.hl:before{display:none}
+.kpi.hl .l,.kpi.hl .s{color:rgba(255,255,255,.85)}
+.kpi.hl .v{color:#fff}
+.chart-box{position:relative;height:300px}
+.chart-box.tall{height:420px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--ink2);font-size:12px;margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+.tile{background:linear-gradient(180deg,#fff,#fff6fa);border:1px solid var(--line);border-radius:13px;padding:10px 12px;cursor:pointer;transition:.15s}
+.tile:hover{border-color:var(--pink);transform:translateY(-1px);box-shadow:0 6px 18px rgba(230,0,126,.12)}
+.tile.sel{border-color:var(--pink);background:var(--pinkSoft);box-shadow:0 0 0 2px rgba(230,0,126,.2)}
+.tile .n{font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .row{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}
+.tile .p{font-size:22px;font-weight:600;color:var(--pink)}
+.tile .c{font-size:11.5px;color:var(--mute);text-align:right}
+.bar{height:6px;border-radius:4px;background:#f6e1ec;overflow:hidden;margin-top:6px}
+.bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--pink2),var(--mag));border-radius:4px}
+/* tables */
+.tbl-wrap{overflow:auto;max-height:640px;border-radius:12px;border:1px solid var(--line)}
+table.t{border-collapse:separate;border-spacing:0;width:100%;font-size:12.8px}
+table.t th,table.t td{padding:7px 10px;border-bottom:1px solid #f8e4ee;white-space:nowrap;text-align:left}
+table.t th{position:sticky;top:0;background:#fff0f7;color:var(--ink2);font-weight:500;cursor:pointer;user-select:none;z-index:2}
+table.t th:hover{color:var(--pink)}
+table.t th.sorted{color:var(--pink)}
+table.t th .ar{font-size:10px;margin-left:3px}
+table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+table.t tbody tr:nth-child(even) td{background:#fffafd}
+table.t tr:hover td{background:#fff0f7}
+table.t td.first,table.t th.first{position:sticky;left:0;background:#fff;z-index:1}
+table.t th.first{z-index:3;background:#fff0f7}
+table.t tr.total td{background:#ffe3f1;font-weight:500;color:var(--ink);position:sticky;bottom:0;border-top:2px solid var(--pink)}
+table.t tr.total td.first{background:#ffe3f1}
+td .trunc{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;cursor:zoom-in}
+td.open .trunc{max-width:none;white-space:normal;cursor:zoom-out}
+table.t.wrapall td .trunc{max-width:none;white-space:normal}
+.pct{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;min-width:86px}
+.pct .mb{width:40px;height:5px;background:#f6e1ec;border-radius:3px;overflow:hidden}
+.pct .mb span{display:block;height:100%;background:var(--pink)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11.5px;border:1px solid var(--line2)}
+.b-yes{color:#be0067;border-color:rgba(230,0,126,.35);background:rgba(230,0,126,.08)}
+.b-no{color:#b45309;border-color:rgba(217,119,6,.35);background:rgba(217,119,6,.08)}
+.b-zero{color:var(--mute);background:#faf7fb}
+.b-miss{color:#1d4ed8;border-color:rgba(29,78,216,.3);background:rgba(29,78,216,.06)}
+.tbl-foot{display:flex;align-items:center;gap:10px;padding-top:8px;color:var(--mute);font-size:12px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:#fff}
+.seg button{background:transparent;border:0;color:var(--ink2);padding:4px 10px;cursor:pointer;font-size:12px}
+.seg button.on{background:linear-gradient(90deg,var(--pink2),var(--mag));color:#fff}
+.search{padding:6px 10px;border-radius:9px;border:1px solid var(--line2);background:#fff;color:var(--ink);outline:none;font-size:12.5px;min-width:200px}
+.search:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pinkSoft)}
+.exec{border:1px solid var(--line2);background:linear-gradient(135deg,#fff 0%,#fff4fa 60%,#fdf0ff 100%)}
+.exec ul{margin:0;padding-left:0;list-style:none;display:grid;gap:8px}
+.exec li{padding:9px 12px;border-radius:11px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--pink);line-height:1.55}
+.exec li.w{border-left-color:var(--warn)}
+.exec li.g{border-left-color:var(--ok)}
+.exec li.a{border-left-color:var(--vio)}
+.exec b{color:var(--ink);font-weight:500}
+.exec .hl{color:var(--pink);font-weight:600}
+.section-title{font-family:Orbitron,Kanit,sans-serif;font-size:12px;letter-spacing:.14em;color:var(--pink);margin:22px 0 10px;display:flex;align-items:center;gap:10px;font-weight:600}
+.section-title:before{content:"";width:8px;height:8px;border-radius:2px;background:linear-gradient(135deg,var(--pink2),var(--mag));transform:rotate(45deg)}
+.section-title:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(230,0,126,.45),transparent)}
+.note{color:var(--mute);font-size:12px}
+.drop{border:1.5px dashed var(--line2);border-radius:14px;padding:24px;text-align:center;cursor:pointer;background:#fffafd}
+.drop:hover,.drop.over{border-color:var(--pink);background:var(--pinkSoft)}
+.drop .big{font-size:16px;font-weight:500;color:var(--pink)}
+.kv{display:grid;grid-template-columns:160px 1fr;gap:4px 12px;font-size:13px}
+.kv div:nth-child(odd){color:var(--mute)}
+.msg{padding:10px 12px;border-radius:10px;margin-top:10px;font-size:13px;display:none}
+.msg.show{display:block}
+.msg.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.msg.er{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.msg.in{background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6}
+.toast{position:fixed;bottom:18px;right:18px;z-index:120;background:#fff;border:1px solid var(--pink);padding:10px 14px;border-radius:12px;box-shadow:0 10px 40px rgba(230,0,126,.2);display:none;max-width:420px}
+.toast.show{display:block}
+.loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--ink2);z-index:90;background:#fff}
+.spin{width:38px;height:38px;border-radius:50%;border:3px solid #f6d6e6;border-top-color:var(--pink);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="login-box">
+    <div class="brand" style="font-size:13px;color:var(--mute);margin-bottom:10px;-webkit-text-fill-color:initial">TRUE SHOP <span class="p">by WW</span></div>
+    <h1 class="brand">TVS NOW <span class="p">REDEEM</span></h1>
+    <p>กรอกรหัสเพื่อเข้าใช้งาน Dashboard</p>
+    <form id="loginForm"><input id="pw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"><button class="btn primary" type="submit">เข้าสู่ระบบ</button></form>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+<div class="loading hide" id="loading"><div class="spin"></div><div id="loadingTxt">กำลังโหลดข้อมูล...</div></div>
+
+<div id="app" class="hide">
+<header class="top">
+  <div class="topbar">
+    <div class="brand">TVS NOW <span class="p">REDEEM</span></div>
+    <nav class="tabs" id="tabs">
+      <div class="tab active" data-v="dash">Dashboard</div>
+      <div class="tab" data-v="staff">By Staff</div>
+      <div class="tab" data-v="camp">By Campaign</div>
+      <div class="tab hide" data-v="admin" id="tabAdmin">⚙ Admin</div>
+    </nav>
+    <div class="spacer"></div>
+    <span class="who" id="who"></span>
+    <button class="btn sm" id="btnReset">ล้างตัวกรอง</button>
+    <button class="btn sm" id="btnLogout">ออกจากระบบ</button>
+  </div>
+  <div class="datainfo" id="dataInfo"></div>
+  <div class="filters" id="filters"></div>
+</header>
+
+<main>
+<!-- ================= DASHBOARD ================= -->
+<section class="view active" id="v-dash">
+  <div class="grid g-kpi" id="kpiDash"></div>
+
+  <div class="section-title">AREA SCORECARD · 15 AREA</div>
+  <div class="card" id="c-tiles"><div class="card-h"><h3>% Redeem "Yes" ทุก Area</h3><span class="sub">คลิกที่ Area เพื่อกรอง (เลือกได้หลาย Area)</span><div class="acts"></div></div><div class="card-b"><div class="tiles" id="tiles"></div></div></div>
+
+  <div class="section-title">TREND & MIX</div>
+  <div class="grid g-3">
+    <div class="card" id="c-trend"><div class="card-h"><h3><span class="tag">1.1</span>Daily Trend</h3><div class="acts"><div class="seg" id="trendMode"><button class="on" data-m="cnt">จำนวน</button><button data-m="pct">% Yes</button></div></div></div><div class="card-b"><div class="legend" id="trendLegend"></div><div class="chart-box"><canvas id="chTrend"></canvas></div></div></div>
+    <div class="card" id="c-pie"><div class="card-h"><h3><span class="tag">1.2</span>สัดส่วน Redeem</h3></div><div class="card-b"><div class="legend" id="pieLegend"></div><div class="chart-box"><canvas id="chPie"></canvas></div></div></div>
+    <div class="card" id="c-vendor"><div class="card-h"><h3><span class="tag">1.3</span>สัดส่วน VENDOR</h3></div><div class="card-b"><div class="legend" id="vendorLegend"></div><div class="chart-box"><canvas id="chVendor"></canvas></div></div></div>
+  </div>
+
+  <div class="section-title">BY REGION</div>
+  <div class="grid g-2">
+    <div id="t-region"></div>
+    <div id="t-regionDate"></div>
+  </div>
+  <div class="section-title">BY AREA</div>
+  <div id="t-area"></div>
+  <div id="t-areaDate"></div>
+  <div class="section-title">BY SHOP</div>
+  <div id="t-shop"></div>
+  <div id="t-shopDate"></div>
+  <div class="section-title">EXECUTIVE SUMMARY</div>
+  <div class="card exec" id="c-execDash"><div class="card-h"><h3><span class="tag">4.3</span>สรุปวิเคราะห์สำหรับผู้บริหาร</h3><span class="sub">คำนวณอัตโนมัติตามตัวกรองปัจจุบัน</span><div class="acts"></div></div><div class="card-b"><ul id="execDash"></ul></div></div>
+</section>
+
+<!-- ================= STAFF ================= -->
+<section class="view" id="v-staff">
+  <div class="filters" style="padding:0 0 12px;border:0" id="staffFilters"></div>
+  <div class="grid g-kpi" id="kpiStaff"></div>
+  <div class="section-title">2.1 STAFF ทำ / ไม่ทำ REDEEM</div>
+  <div class="card" id="c-staffArea"><div class="card-h"><h3><span class="tag">2.1</span>สัดส่วน Staff ทำ / ไม่ทำ Redeem ราย Area</h3><span class="sub">ฐาน Staff จาก MAN LIST</span></div><div class="card-b"><div class="legend" id="staffLegend"></div><div class="chart-box tall"><canvas id="chStaffArea"></canvas></div></div></div>
+  <div id="t-staffCov"></div>
+  <div class="section-title">2.2 BY STAFF</div>
+  <div id="t-staff"></div>
+  <div class="section-title">2.3 RAW DATA</div>
+  <div class="card" id="c-raw"><div class="card-h"><h3><span class="tag">2.3</span>Detail Raw Data</h3><span class="sub" id="rawSub"></span><div class="acts"><input class="search" id="rawSearch" placeholder="ค้นหา ID / เบอร์ / Shop / Promotion..."><button class="btn primary sm" id="rawExport">⤓ Export Excel</button></div></div><div class="card-b"><div class="tbl-wrap" id="rawWrap"></div><div class="tbl-foot" id="rawFoot"></div></div></div>
+  <div class="section-title">EXECUTIVE SUMMARY</div>
+  <div class="card exec" id="c-execStaff"><div class="card-h"><h3><span class="tag">4.3</span>สรุปวิเคราะห์สำหรับผู้บริหาร · Staff</h3><div class="acts"></div></div><div class="card-b"><ul id="execStaff"></ul></div></div>
+</section>
+
+<!-- ================= CAMPAIGN ================= -->
+<section class="view" id="v-camp">
+  <div class="grid g-kpi" id="kpiCamp"></div>
+  <div class="section-title">4.1 VENDOR</div>
+  <div class="grid g-2">
+    <div class="card" id="c-vendor2"><div class="card-h"><h3><span class="tag">4.1</span>สัดส่วน VENDOR</h3></div><div class="card-b"><div class="legend" id="vendor2Legend"></div><div class="chart-box"><canvas id="chVendor2"></canvas></div></div></div>
+    <div class="card" id="c-vendorBar"><div class="card-h"><h3>Redeem-Yes / No ราย VENDOR</h3></div><div class="card-b"><div class="legend" id="vendorBarLegend"></div><div class="chart-box"><canvas id="chVendorBar"></canvas></div></div></div>
+  </div>
+  <div id="t-vendor" style="margin-top:14px"></div>
+  <div class="section-title">4.2 PROMOTION</div>
+  <div class="card" id="c-promoBar"><div class="card-h"><h3><span class="tag">4.2</span>Top 15 PROMOTION_DESC ตามยอด Registered</h3></div><div class="card-b"><div class="legend" id="promoLegend"></div><div class="chart-box tall"><canvas id="chPromo"></canvas></div></div></div>
+  <div id="t-promo"></div>
+  <div id="t-campaign"></div>
+  <div id="t-company"></div>
+  <div class="section-title">EXECUTIVE SUMMARY</div>
+  <div class="card exec" id="c-execCamp"><div class="card-h"><h3><span class="tag">4.3</span>สรุปวิเคราะห์สำหรับผู้บริหาร · Campaign</h3><div class="acts"></div></div><div class="card-b"><ul id="execCamp"></ul></div></div>
+</section>
+
+<!-- ================= ADMIN ================= -->
+<section class="view" id="v-admin">
+  <div class="grid g-2">
+    <div class="card"><div class="card-h"><h3><span class="tag">A1</span>อัปเดตไฟล์ TVS NOW REDEEM</h3><span class="sub">ชื่อไฟล์อะไรก็ได้ · ระบบหา Sheet ที่มีคอลัมน์ STATUS_REDEEM ให้อัตโนมัติ</span></div><div class="card-b">
+      <div class="kv" id="curRedeem"></div>
+      <div class="drop" id="dropRedeem" style="margin-top:12px"><div class="big">⤒ ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</div><div class="note">.xlsx / .xls / .csv</div><input type="file" id="fileRedeem" accept=".xlsx,.xls,.xlsb,.csv" hidden></div>
+      <div class="msg" id="msgRedeem"></div>
+      <div id="actRedeem" class="hide" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="pubRedeem">บันทึก & เผยแพร่ให้ทุกคน</button><button class="btn" id="locRedeem">ดูเฉพาะเครื่องนี้ (ไม่บันทึก)</button></div>
+    </div></div>
+    <div class="card"><div class="card-h"><h3><span class="tag">A2</span>อัปเดตไฟล์ MAN &amp; SHOP LIST</h3><span class="sub">ต้องมี Sheet ที่มี EMP_ID (MAN LIST) และ SHOP CODE (SHOP LIST)</span></div><div class="card-b">
+      <div class="kv" id="curMaster"></div>
+      <div class="drop" id="dropMaster" style="margin-top:12px"><div class="big">⤒ ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</div><div class="note">.xlsx / .xls</div><input type="file" id="fileMaster" accept=".xlsx,.xls,.xlsb" hidden></div>
+      <div class="msg" id="msgMaster"></div>
+      <div id="actMaster" class="hide" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="pubMaster">บันทึก & เผยแพร่ให้ทุกคน</button><button class="btn" id="locMaster">ดูเฉพาะเครื่องนี้ (ไม่บันทึก)</button></div>
+    </div></div>
+  </div>
+  <div class="section-title">SHOP LIST vs ข้อมูล REDEEM</div>
+  <div class="grid g-kpi" id="kpiMatch"></div>
+  <div class="grid g-2" style="margin-top:14px">
+    <div id="t-shopNoSale"></div>
+    <div id="t-shopNotMaster"></div>
+  </div>
+  <div id="t-staffNotMaster"></div>
+  <p class="note">หมายเหตุ: รหัส ADMIN / USER เป็นการกั้นหน้าจอเท่านั้น ข้อมูลทั้งหมดถูกโหลดมากับหน้าเว็บ — ควรแชร์ลิงก์เฉพาะคนในองค์กร</p>
+</section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ====================== utils ====================== */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const el=(tag,attrs={},...kids)=>{const e=document.createElement(tag);for(const k in attrs){if(k==='class')e.className=attrs[k];else if(k==='text')e.textContent=attrs[k];else if(k.startsWith('on'))e.addEventListener(k.slice(2),attrs[k]);else e.setAttribute(k,attrs[k]);}kids.flat().forEach(c=>{if(c==null)return;e.append(c.nodeType?c:document.createTextNode(c))});return e;};
+const fmt=n=>(n==null||isNaN(n))?'-':Math.round(n).toLocaleString('en-US');
+const pct=(a,b)=>b?a/b*100:null;
+const fp=v=>v==null?'-':v.toFixed(1)+'%';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const natCmp=(a,b)=>String(a).localeCompare(String(b),'en',{numeric:true});
+function toast(t,ms=3500){const x=$('#toast');x.textContent=t;x.classList.add('show');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('show'),ms);}
+const C={yes:'#e6007e',no:'#c9c3cf',cat:['#e8337f','#8b5cf6','#0891b2','#d97706','#16a34a','#94a3b8'],zero:'#ddd8e2',miss:'#3b82f6',sold:'#f59e0b'};
+const UNK='(ไม่ระบุ)';
+
+/* ====================== auth ====================== */
+const PW={ADMIN5555:'admin',WW5555:'user'};
+let ROLE=null;
+function ssGet(k){try{return sessionStorage.getItem(k)}catch(e){return null}}
+function ssSet(k,v){try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}
+$('#loginForm').addEventListener('submit',e=>{e.preventDefault();const r=PW[$('#pw').value.trim()];if(!r){$('#loginErr').textContent='รหัสไม่ถูกต้อง';return;}ssSet('tvsRole',r);enter(r);});
+$('#btnLogout').onclick=()=>{ssSet('tvsRole',null);location.reload();};
+function enter(r){ROLE=r;$('#login').classList.add('hide');$('#who').textContent=r==='admin'?'ADMIN':'USER';$('#tabAdmin').classList.toggle('hide',r!=='admin');boot();}
+
+/* ====================== data load ====================== */
+let RED=null, MAS=null;     // raw encoded
+let RAW={cols:[],rows:[]};  // decoded redeem rows (arrays)
+let MODEL=null;
+function decodeRedeem(j){const n=j.n,cols=j.cols,rows=new Array(n);for(let i=0;i<n;i++){const r=new Array(cols.length);for(let c=0;c<cols.length;c++)r[c]=j.dict[c][j.idx[c][i]];rows[i]=r;}return {cols,rows};}
+function encodeRedeem(cols,rows,meta){const dict=[],idx=[];for(let c=0;c<cols.length;c++){const m=new Map(),vals=[],ix=new Array(rows.length);for(let i=0;i<rows.length;i++){const v=rows[i][c]??'';let k=m.get(v);if(k===undefined){k=vals.length;m.set(v,k);vals.push(v);}ix[i]=k;}dict.push(vals);idx.push(ix);}return {cols,dict,idx,n:rows.length,meta};}
+async function loadJSON(p){const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw new Error(p+' '+r.status);return r.json();}
+let booted=false;
+async function boot(){
+  if(booted)return;booted=true;
+  $('#loading').classList.remove('hide');
+  try{
+    const [a,b]=await Promise.all([loadJSON('data/redeem.json'),loadJSON('data/master.json')]);
+    RED=a;MAS=b;RAW=decodeRedeem(RED);
+  }catch(e){$('#loadingTxt').textContent='โหลดข้อมูลไม่สำเร็จ: '+e.message;return;}
+  $('#loading').classList.add('hide');$('#app').classList.remove('hide');
+  rebuild();go(VIEW);
+}
+
+/* ====================== model ====================== */
+function colIdx(cols,cands){const up=cols.map(c=>String(c).trim().toUpperCase());for(const c of cands){const i=up.indexOf(c.toUpperCase());if(i>=0)return i;}for(const c of cands){const i=up.findIndex(x=>x.startsWith(c.toUpperCase()));if(i>=0)return i;}return -1;}
+function normArea(s){s=String(s||'').replace(/^Regional\s+Management\s+/i,'').replace(/\s+/g,' ').trim();return s;}
+function normDate(v){v=String(v||'').trim();if(!v)return '';let m;
+  if(m=v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/))return m[1]+'/'+m[2].padStart(2,'0')+'/'+m[3].padStart(2,'0');
+  if(m=v.match(/^(\d{4})(\d{2})(\d{2})$/))return m[1]+'/'+m[2]+'/'+m[3];
+  if(/^\d{5}(\.\d+)?$/.test(v)){const d=new Date(Math.round((+v-25569)*864e5));return d.getUTCFullYear()+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0');}
+  if(m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)){let y=+m[3];if(y<100)y+=2000;if(y>2400)y-=543;return y+'/'+m[2].padStart(2,'0')+'/'+m[1].padStart(2,'0');}
+  return v;}
+function zoneOf(a){a=String(a).toUpperCase();return a.startsWith('BMA')?'BMA':a.startsWith('UPC')?'UPC':UNK;}
+function areaRank(a){const z=zoneOf(a);return (z==='BMA'?0:z==='UPC'?1:2);}
+const areaSort=(a,b)=>areaRank(a)-areaRank(b)||natCmp(a,b);
+const REG_ORD={'BMA':0,'UPC I':1,'UPC II':2};const regSort=(a,b)=>(REG_ORD[a]??9)-(REG_ORD[b]??9)||natCmp(a,b);
+
+function buildMaster(){
+  const shops=new Map(),shopsTds=new Map(),man=new Map();
+  if(MAS&&MAS.shop){const c=MAS.shop.cols,ix=n=>colIdx(c,n);
+    const iC=ix(['SHOP CODE','SHOP_CODE']),iT=ix(['CODE TDS']),iN=ix(['SHOP NAME','SHOP_NAME']),iTy=ix(['TYPE SHOP','SHOP_TYPE']),iA=ix(['AREA']),iS=ix(['Size Shop','SIZE']),iR=ix(['REGION']),iR2=ix(['REGION2']),iCo=ix(['COMPANY']),iP=ix(['Province']);
+    for(const r of MAS.shop.rows){const code=String(r[iC]||'').trim();if(!code)continue;const o={code,tds:iT>=0?String(r[iT]).trim():'',name:r[iN]||code,type:iTy>=0?r[iTy]:'',area:normArea(iA>=0?r[iA]:''),size:iS>=0?r[iS]:'',region:iR>=0?r[iR]:'',region2:iR2>=0?r[iR2]:'',company:iCo>=0?r[iCo]:'',province:iP>=0?r[iP]:''};shops.set(code,o);if(o.tds)shopsTds.set(o.tds,o);}}
+  if(MAS&&MAS.man){const c=MAS.man.cols,ix=n=>colIdx(c,n);
+    const iI=ix(['EMP_ID']),iN=ix(['NAME']),iT=ix(['EMP_TYPE']),iSC=ix(['SHOP_CODE']),iSN=ix(['SHOP_NAME']),iR=ix(['REGION']),iST=ix(['SHOP_TYPE']),iCo=ix(['COMPANY']);
+    for(const r of MAS.man.rows){const id=String(r[iI]||'').trim();if(!id||man.has(id))continue;man.set(id,{id,name:r[iN]||'',type:r[iT]||'',shopCode:String(r[iSC]||'').trim(),shopName:r[iSN]||'',region:r[iR]||'',shopType:r[iST]||'',company:r[iCo]||''});}}
+    // Region (BMA / UPC I / UPC II) ตั้งต้นจาก MAN LIST: แถว RRH ที่ SHOP_CODE = Regional Management <Area>
+  const areaReg=new Map();
+  const regLabel=t=>{t=String(t||'').toUpperCase().replace(/\s+/g,' ');if(/UPC ?(2|II)\b/.test(t))return 'UPC II';if(/UPC ?(1|I)\b/.test(t))return 'UPC I';if(/BMA/.test(t))return 'BMA';return null;};
+  if(MAS&&MAS.man){const c=MAS.man.cols,iT=colIdx(c,['EMP_TYPE']),iSC=colIdx(c,['SHOP_CODE']),iR=colIdx(c,['REGION']);
+    for(const r of MAS.man.rows){const sc=String(r[iSC]||'');if(!/^Regional\s+Management/i.test(sc))continue;const ar=normArea(sc);
+      const lb=regLabel(r[iR])&&['BMA','UPC I','UPC II'].includes(String(r[iR]).trim())?String(r[iR]).trim():(/RRH/i.test(r[iT]||'')?regLabel(r[iT]):null);
+      if(lb&&!areaReg.has(ar))areaReg.set(ar,lb);}}
+  for(const sh of shops.values()){if(sh.area&&!areaReg.has(sh.area)){const lb=regLabel(sh.region);if(lb)areaReg.set(sh.area,lb);}}
+  const regionOf=area=>areaReg.get(area)||(zoneOf(area)==='BMA'?'BMA':UNK);
+  return {shops,shopsTds,man,areaReg,regionOf};
+}
+function rebuild(){
+  const M=buildMaster();const cols=RAW.cols;const I=n=>colIdx(cols,n);
+  const ix={st:I(['STATUS_REDEEM']),d:I(['TM_KEY_DATE']),d2:I(['APNMNT_TM_KEY_DAY']),m:I(['TM_KEY_MONTH']),co:I(['COMPANY']),ve:I(['VENDOR']),ca:I(['CAMPAIGN']),pr:I(['PROMOTION_DESC']),sr:I(['SALE_REPRESENT']),pc:I(['PARTNER_CODE']),pn:I(['PARTNER_NAME']),sn:I(['Shop Name']),ar:I(['Area']),rg:I(['TDS_REGION_PARTNER','REGION']),pf:I(['PLATFROM','PLATFORM']),cnt:I(['CNT_SUB'])};
+  const g=(r,i)=>{if(i<0)return '';const v=String(r[i]??'').trim();return /^#?N\/?A$|^#REF!$|^-$/i.test(v)?'':v;};
+  const recs=[];const partnerArea=new Map(),partnerRegion=new Map(),partnerName=new Map();
+  RAW.rows.forEach((r,i)=>{
+    const code=g(r,ix.pc);const ms=M.shops.get(code)||M.shopsTds.get(code);
+    let area=normArea(g(r,ix.ar));if(!area&&ms)area=ms.area;if(!area)area=UNK;
+    let d=normDate(g(r,ix.d));if(!d)d=normDate(g(r,ix.d2));
+    let m=g(r,ix.m);if(!/^\d{4}\/\d{2}$/.test(m))m=d.slice(0,7);
+    const st=g(r,ix.st).toUpperCase();
+    const cnt=ix.cnt>=0&&r[ix.cnt]!==''&&!isNaN(+r[ix.cnt])?+r[ix.cnt]:1;
+    const shopName=(ms&&ms.name)||g(r,ix.sn)||g(r,ix.pn)||code||UNK;
+    const rec={i,d,m,y:st.includes('YES')?1:0,n:cnt,area,zone:zoneOf(area),region:M.regionOf(area),regSrc:M.areaReg.has(area)?'Master':'Redeem',shop:code||UNK,shopName,vendor:g(r,ix.ve)||UNK,company:g(r,ix.co)||UNK,campaign:g(r,ix.ca)||UNK,promo:g(r,ix.pr)||UNK,platform:g(r,ix.pf)||UNK,staff:g(r,ix.sr)||UNK,inShopList:!!ms};
+    recs.push(rec);
+    if(code){const pa=partnerArea.get(code)||{};pa[area]=(pa[area]||0)+1;partnerArea.set(code,pa);const pr=partnerRegion.get(code)||{};pr[rec.region]=(pr[rec.region]||0)+1;partnerRegion.set(code,pr);if(!partnerName.has(code))partnerName.set(code,shopName);}
+  });
+  const dom=o=>{let b=null,bv=-1;for(const k in o)if(o[k]>bv&&k!==UNK){b=k;bv=o[k];}return b;};
+  const shopInfo=new Map(); // code -> {name, area, region}
+  for(const [code,o] of partnerArea)shopInfo.set(code,{name:partnerName.get(code),area:dom(o)||UNK,region:dom(partnerRegion.get(code))||UNK});
+  for(const [code,s] of M.shops){const x=shopInfo.get(code);if(x){if(s.area)x.area=s.area;x.name=s.name;}else shopInfo.set(code,{name:s.name,area:s.area||UNK,noData:true});}
+  for(const x of shopInfo.values())x.region=M.regionOf(x.area);
+  // shop label uniqueness
+  const nameCount={};for(const [c,s] of shopInfo)nameCount[s.name]=(nameCount[s.name]||0)+1;
+  for(const [c,s] of shopInfo)s.label=nameCount[s.name]>1?s.name+' ['+c+']':s.name;
+  recs.forEach(r=>{const s=shopInfo.get(r.shop);r.shopLabel=s?s.label:r.shopName;});
+  MODEL={recs,M,shopInfo,ix};
+  buildFilters();renderAll();renderDataInfo();
+}
+
+/* ====================== filters ====================== */
+const DIMS=[['m','เดือน'],['d','วันที่'],['region','Region'],['area','Area'],['shopLabel','Shop'],['vendor','Vendor'],['company','Company'],['campaign','Campaign'],['platform','Platform']];
+let F={};let defaultMonthSet=false;
+function passes(r,skip){for(const [k] of DIMS){if(k===skip)continue;const s=F[k];if(s&&s.size&&!s.has(r[k]))return false;}return true;}
+function filtered(skip){return MODEL.recs.filter(r=>passes(r,skip));}
+function buildFilters(){
+  const box=$('#filters');box.innerHTML='';
+  if(!defaultMonthSet){const ms=[...new Set(MODEL.recs.map(r=>r.m))].sort();if(ms.length>1)F.m=new Set([ms[ms.length-1]]);defaultMonthSet=true;}
+  for(const [k,label] of DIMS)box.append(makeMS(k,label,()=>{const cnt=new Map();for(const r of filtered(k))cnt.set(r[k],(cnt.get(r[k])||0)+r.n);const vals=[...cnt.keys()];vals.sort(k==='area'?areaSort:k==='region'?regSort:(k==='d'||k==='m')?((a,b)=>a<b?1:-1):natCmp);for(const v of (F[k]||[]))if(!cnt.has(v))vals.push(v);return vals.map(v=>({v,c:cnt.get(v)||0}));},F,()=>{refreshFilterButtons();renderAll();}));
+  refreshFilterButtons();
+}
+function makeMS(k,label,optsFn,store,onChange){
+  const wrap=el('div',{class:'ms','data-k':k});const btn=el('button',{class:'ms-btn',type:'button'});const pop=el('div',{class:'ms-pop'});
+  const inp=el('input',{placeholder:'ค้นหา '+label+'...'});const list=el('div',{class:'ms-list'});
+  const all=el('button',{class:'btn sm',type:'button',text:'เลือกที่แสดงทั้งหมด'}),clr=el('button',{class:'btn sm',type:'button',text:'ล้าง'});
+  pop.append(inp,el('div',{class:'ms-acts'},all,clr),list);wrap.append(btn,pop);
+  let opts=[];
+  const draw=()=>{const q=inp.value.toLowerCase();list.innerHTML='';const s=store[k]||new Set();opts.filter(o=>String(o.v).toLowerCase().includes(q)).slice(0,600).forEach(o=>{const cb=el('input',{type:'checkbox'});cb.checked=s.has(o.v);const row=el('label',{class:'ms-opt'},cb,el('span',{text:o.v,title:o.v}),el('i',{text:fmt(o.c)}));cb.onchange=()=>{const S=store[k]||(store[k]=new Set());cb.checked?S.add(o.v):S.delete(o.v);onChange();};list.append(row);});};
+  btn.onclick=e=>{e.stopPropagation();const was=wrap.classList.contains('open');$$('.ms.open').forEach(x=>x.classList.remove('open'));if(!was){opts=optsFn();inp.value='';draw();wrap.classList.add('open');inp.focus();}};
+  inp.oninput=draw;
+  all.onclick=()=>{const q=inp.value.toLowerCase();const S=store[k]||(store[k]=new Set());opts.filter(o=>String(o.v).toLowerCase().includes(q)).forEach(o=>S.add(o.v));draw();onChange();};
+  clr.onclick=()=>{store[k]=new Set();draw();onChange();};
+  pop.onclick=e=>e.stopPropagation();
+  wrap._label=label;wrap._btn=btn;
+  return wrap;
+}
+document.addEventListener('click',()=>$$('.ms.open').forEach(x=>x.classList.remove('open')));
+function msLabel(wrap,store){const k=wrap.dataset.k,s=store[k];const n=s?s.size:0;wrap._btn.classList.toggle('act',n>0);wrap._btn.innerHTML='';wrap._btn.append(el('span',{text:wrap._label+':'}),el('b',{text:n===0?'ทั้งหมด':n===1?[...s][0]:n+' รายการ'}),el('span',{text:'▾'}));}
+function refreshFilterButtons(){$$('#filters .ms').forEach(w=>msLabel(w,F));$$('#staffFilters .ms').forEach(w=>msLabel(w,SF));}
+$('#btnReset').onclick=()=>{F={};SF={};$$('#staffFilters .ms').length&&buildStaffFilters();refreshFilterButtons();renderAll();};
+
+/* ====================== aggregation ====================== */
+function agg(rows,keyFn){const m=new Map();for(const r of rows){const k=keyFn(r);let o=m.get(k);if(!o){o={key:k,no:0,yes:0,tot:0};m.set(k,o);}if(r.y)o.yes+=r.n;else o.no+=r.n;o.tot+=r.n;}for(const o of m.values())o.pct=pct(o.yes,o.tot);return m;}
+function totals(rows){const o={no:0,yes:0,tot:0};for(const r of rows){if(r.y)o.yes+=r.n;else o.no+=r.n;o.tot+=r.n;}o.pct=pct(o.yes,o.tot);return o;}
+
+/* ====================== table component ====================== */
+const TS={}; // table state
+function card(id,title,tag,sub){
+  const c=el('div',{class:'card',id:'card-'+id});
+  const acts=el('div',{class:'acts'});
+  const h=el('div',{class:'card-h'},el('h3',{},tag?el('span',{class:'tag',text:tag}):null,title),sub?el('span',{class:'sub',text:sub}):null,acts);
+  const b=el('div',{class:'card-b'});c.append(h,b);
+  return {c,acts,b};
+}
+function addCardTools(c,acts){
+  const full=el('button',{class:'btn sm',type:'button',title:'ขยายเต็มจอ',text:'⤢'});
+  const col=el('button',{class:'btn sm',type:'button',title:'ย่อ/ขยาย',text:'▾'});
+  full.onclick=()=>{c.classList.toggle('full');full.textContent=c.classList.contains('full')?'✕':'⤢';};
+  col.onclick=()=>{c.classList.toggle('collapsed');col.textContent=c.classList.contains('collapsed')?'▸':'▾';};
+  acts.append(full,col);
+}
+/* opts: {id,title,tag,sub,cols:[{k,l,t:'txt'|'num'|'pct'|'badge',heat,w}],rows,total,sort:[k,dir],limit,extra:(acts)=>{},note} */
+function table(host,o){
+  host=typeof host==='string'?$(host):host;
+  const st=TS[o.id]||(TS[o.id]={sort:o.sort||[o.cols[o.cols.length-1].k,-1],all:false,wrap:false,collapsed:false,full:false});
+  const {c,acts,b}=card(o.id,o.title,o.tag,o.sub);
+  if(st.collapsed)c.classList.add('collapsed');if(st.full)c.classList.add('full');
+  if(o.extra)o.extra(acts);
+  const wrapBtn=el('button',{class:'btn sm'+(st.wrap?' on':''),type:'button',title:'แสดงข้อความเต็มทุกช่อง',text:'↔ ข้อความเต็ม'});
+  wrapBtn.onclick=()=>{st.wrap=!st.wrap;redraw();};
+  const exp=el('button',{class:'btn sm',type:'button',title:'Export Excel',text:'⤓'});
+  exp.onclick=()=>exportRows(o.title,o.cols,sorted(),o.total);
+  acts.append(wrapBtn,exp);
+  const full=el('button',{class:'btn sm',type:'button',title:'ขยายเต็มจอ',text:st.full?'✕':'⤢'});
+  const col=el('button',{class:'btn sm',type:'button',title:'ย่อ/ขยาย',text:st.collapsed?'▸':'▾'});
+  full.onclick=()=>{st.full=!st.full;c.classList.toggle('full',st.full);full.textContent=st.full?'✕':'⤢';};
+  col.onclick=()=>{st.collapsed=!st.collapsed;c.classList.toggle('collapsed',st.collapsed);col.textContent=st.collapsed?'▸':'▾';};
+  acts.append(full,col);
+  const tw=el('div',{class:'tbl-wrap'});const foot=el('div',{class:'tbl-foot'});b.append(tw,foot);
+  function sorted(){const [k,d]=st.sort;const col=o.cols.find(x=>x.k===k)||o.cols[0];const isNum=col.t!=='txt'&&col.t!=='badge';return [...o.rows].sort((a,b)=>{let x=a[k],y=b[k];if(isNum){x=x==null?-Infinity:x;y=y==null?-Infinity:y;return (x-y)*d;}if(k==='area'||col.areaSort)return areaSort(x,y)*d;if(col.regSort)return regSort(x,y)*d;return natCmp(x??'',y??'')*d;});}
+  const heatMax={};o.cols.forEach(cl=>{if(cl.heat){let mx=0;o.rows.forEach(r=>{const v=r[cl.k];if(v!=null&&v>mx)mx=v;});heatMax[cl.k]=mx||1;}});
+  function redraw(){
+    wrapBtn.classList.toggle('on',st.wrap);
+    const rows=sorted();const limit=o.limit&&!st.all?o.limit:Infinity;
+    const t=el('table',{class:'t'+(st.wrap?' wrapall':'')});const thr=el('tr');
+    o.cols.forEach((cl,ci)=>{const th=el('th',{class:(cl.t!=='txt'&&cl.t!=='badge'?'n ':'')+(ci===0?'first ':'')+(st.sort[0]===cl.k?'sorted':''),title:'คลิกเพื่อเรียง'},cl.l,st.sort[0]===cl.k?el('span',{class:'ar',text:st.sort[1]>0?'▲':'▼'}):null);th.onclick=()=>{st.sort=[cl.k,st.sort[0]===cl.k?-st.sort[1]:(cl.t==='txt'||cl.t==='badge'?1:-1)];redraw();};thr.append(th);});
+    const thead=el('thead',{},thr);const tb=el('tbody');
+    rows.slice(0,limit).forEach(r=>tb.append(rowEl(r,false)));
+    if(o.total)tb.append(rowEl(o.total,true));
+    t.append(thead,tb);tw.innerHTML='';tw.append(t);
+    foot.innerHTML='';
+    foot.append(el('span',{text:`${fmt(rows.length)} แถว`+(rows.length>limit?` · แสดง Overview ${limit} แถวแรก`:'')}));
+    if(o.limit&&rows.length>o.limit){const tg=el('button',{class:'btn sm',type:'button',text:st.all?'แสดงเฉพาะ Overview':'แสดงทั้งหมด ('+fmt(rows.length)+')'});tg.onclick=()=>{st.all=!st.all;redraw();};foot.append(tg);}
+    if(o.note)foot.append(el('span',{text:o.note}));
+  }
+  function rowEl(r,isTot){const tr=el('tr',{class:isTot?'total':''});o.cols.forEach((cl,ci)=>{const v=r[cl.k];const td=el('td',{class:(cl.t!=='txt'&&cl.t!=='badge'?'n ':'')+(ci===0?'first':'')});
+      if(cl.t==='pct'){if(v==null)td.textContent='-';else td.append(el('span',{class:'pct'},el('span',{text:fp(v)}),el('span',{class:'mb'},el('span',{style:`width:${Math.min(100,v)}%`}))));}
+      else if(cl.t==='num'){td.textContent=cl.pctFmt?fp(v):fmt(v);if(cl.heat&&!isTot&&v){const a=Math.min(1,v/heatMax[cl.k]);td.style.background=`rgba(230,0,126,${(0.06+a*.7).toFixed(3)})`;if(a>.55){td.style.color='#fff';td.style.fontWeight='500';}}}
+      else if(cl.t==='badge'){const b=cl.badge?cl.badge(v,r):null;if(b)td.append(el('span',{class:'badge '+b,text:v}));else td.textContent=v??'';}
+      else{const s=el('span',{class:'trunc',text:v??'',title:v??''});if(cl.w)s.style.maxWidth=cl.w+'px';td.append(s);td.onclick=()=>td.classList.toggle('open');}
+      tr.append(td);});return tr;}
+  redraw();host.innerHTML='';host.append(c);
+}
+function pivotCols(dates,metric){return dates.map(d=>({k:'d_'+d,l:d.slice(5),t:'num',heat:true,pctFmt:metric==='pct'}));}
+function pivotTable(host,o){ // o:{id,title,tag,rows(filtered recs),keyFn,keyLabel,limit}
+  const st=TS[o.id]||(TS[o.id]={sort:['tot',-1]});st.metric=st.metric||'yes';
+  const dates=[...new Set(o.recs.map(r=>r.d))].sort();
+  const m=new Map();
+  for(const r of o.recs){const k=o.keyFn(r);let x=m.get(k);if(!x){x={key:k,_d:{},yes:0,no:0,tot:0};m.set(k,x);}let dd=x._d[r.d]||(x._d[r.d]={yes:0,no:0,tot:0});if(r.y){dd.yes+=r.n;x.yes+=r.n;}else{dd.no+=r.n;x.no+=r.n;}dd.tot+=r.n;x.tot+=r.n;}
+  const mv=(o2)=>st.metric==='pct'?pct(o2.yes,o2.tot):o2[st.metric];
+  const rows=[...m.values()].map(x=>{const row={key:x.key,tot:mv(x)};dates.forEach(d=>{row['d_'+d]=x._d[d]?mv(x._d[d]):(st.metric==='pct'?null:0);});return row;});
+  const T={key:'รวม',_d:{},yes:0,no:0,tot:0};o.recs.forEach(r=>{let dd=T._d[r.d]||(T._d[r.d]={yes:0,no:0,tot:0});if(r.y){dd.yes+=r.n;T.yes+=r.n;}else{dd.no+=r.n;T.no+=r.n;}dd.tot+=r.n;T.tot+=r.n;});
+  const total={key:'รวม',tot:mv(T)};dates.forEach(d=>total['d_'+d]=T._d[d]?mv(T._d[d]):null);
+  const metLbl={yes:'Redeem-Yes',no:'Redeem-No',tot:'Total Registered',pct:'% Yes'};
+  table(host,{id:o.id,title:o.title,tag:o.tag,sub:'ค่าที่แสดง: '+metLbl[st.metric],limit:o.limit,sort:st.sort,
+    cols:[{k:'key',l:o.keyLabel,t:'txt',w:260,areaSort:o.areaSort,regSort:o.regSort},...pivotCols(dates,st.metric),{k:'tot',l:'รวม',t:'num',pctFmt:st.metric==='pct'}],
+    rows,total,
+    extra:acts=>{const seg=el('div',{class:'seg'});Object.entries(metLbl).forEach(([k,l])=>{const b=el('button',{class:st.metric===k?'on':'',type:'button',text:l});b.onclick=()=>{st.metric=k;pivotTable(host,o);};seg.append(b);});acts.append(seg);}});
+}
+const STD_COLS=keyL=>[{k:'key',l:keyL,t:'txt',w:300},{k:'no',l:'Redeem-No',t:'num'},{k:'yes',l:'Redeem-Yes',t:'num'},{k:'tot',l:'Total Registered',t:'num'},{k:'pct',l:'% Redeem "Yes"',t:'pct'}];
+
+/* ====================== export ====================== */
+let DL=null;(async()=>{try{if(window.claude&&claude.use)DL=await claude.use('downloads');}catch(e){}})();
+async function saveXlsx(name,aoa){
+  const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Data');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const fn=name.replace(/[\\/:*?"<>|]+/g,'_')+'.xlsx';
+  if(!DL){try{DL=await claude.use('downloads');}catch(e){}}
+  if(!DL){copyFallback(aoa);return;}
+  try{await DL.save({filename:fn,data:new Blob([buf])});toast('ดาวน์โหลด '+fn);}catch(e){if(e&&e.code==='declined')return;toast('ดาวน์โหลดไม่ได้ในมุมมองนี้ ('+(e&&e.code||'error')+') — คัดลอกข้อมูลแทน');copyFallback(aoa);}
+}
+function copyFallback(aoa){const tsv=aoa.map(r=>r.map(v=>String(v??'').replace(/[\t\n]/g,' ')).join('\t')).join('\n');navigator.clipboard.writeText(tsv).then(()=>toast('คัดลอกข้อมูลแล้ว — วางใน Excel ได้เลย')).catch(()=>toast('ไม่สามารถดาวน์โหลดหรือคัดลอกได้ในมุมมองนี้'));}
+function exportRows(title,cols,rows,total){const aoa=[cols.map(c=>c.l)];const push=r=>aoa.push(cols.map(c=>{const v=r[c.k];return (c.t==='pct'||c.pctFmt)&&v!=null?+v.toFixed(2):v;}));rows.forEach(push);if(total)push(total);saveXlsx('TVS_'+title,aoa);}
+
+/* ====================== charts ====================== */
+const CH={};
+if(window.Chart){Chart.defaults.color='#4f4757';Chart.defaults.font.family='Kanit';Chart.defaults.borderColor='#f3dbe8';Chart.defaults.plugins.legend.display=false;Chart.defaults.plugins.tooltip.backgroundColor='#ffffff';Chart.defaults.plugins.tooltip.titleColor='#1f1a26';Chart.defaults.plugins.tooltip.bodyColor='#4f4757';Chart.defaults.plugins.tooltip.footerColor='#e6007e';Chart.defaults.plugins.tooltip.borderColor='#e6007e';Chart.defaults.plugins.tooltip.borderWidth=1;Chart.defaults.plugins.tooltip.padding=10;Chart.defaults.animation.duration=350;}
+function chart(id,cfg){if(!window.Chart)return;if(CH[id])CH[id].destroy();CH[id]=new Chart(document.getElementById(id),cfg);}
+function legend(id,items){const b=$('#'+id);b.innerHTML='';items.forEach(([c,t])=>b.append(el('span',{},el('i',{style:'background:'+c}),t)));}
+const centerText={id:'centerText',afterDraw(ch){const t=ch.options.plugins.centerText;if(!t)return;const {ctx,chartArea:{left,right,top,bottom}}=ch;const x=(left+right)/2,y=(top+bottom)/2;ctx.save();ctx.textAlign='center';ctx.fillStyle='#e6007e';ctx.font='600 26px Kanit';ctx.fillText(t.a,x,y+4);ctx.fillStyle='#8d8497';ctx.font='12px Kanit';ctx.fillText(t.b,x,y+22);ctx.restore();}};
+function doughnut(id,labels,vals,colors,center){chart(id,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors,borderColor:'#ffffff',borderWidth:2,hoverOffset:6}]},plugins:[centerText],options:{maintainAspectRatio:false,cutout:'64%',plugins:{centerText:center,tooltip:{callbacks:{label:c=>{const s=c.dataset.data.reduce((a,b)=>a+b,0);return ` ${c.label}: ${fmt(c.raw)} (${fp(pct(c.raw,s))})`;}}}}}});}
+
+/* ====================== render: dashboard ====================== */
+function kpis(host,items){const b=$(host);b.innerHTML='';items.forEach(([l,v,s,hl])=>b.append(el('div',{class:'kpi'+(hl?' hl':'')},el('div',{class:'l',text:l}),el('div',{class:'v num',text:v}),el('div',{class:'s',text:s||''}))));}
+let trendMode='cnt';
+$('#trendMode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;trendMode=b.dataset.m;$$('#trendMode button').forEach(x=>x.classList.toggle('on',x===b));renderDash();});
+function renderDash(){
+  const R=filtered();const T=totals(R);
+  const shops=new Set(R.map(r=>r.shop)),dates=[...new Set(R.map(r=>r.d))].sort();
+  kpis('#kpiDash',[['Total Registered',fmt(T.tot),dates.length?`${dates[0]} – ${dates[dates.length-1]}`:''],['Redeem-Yes',fmt(T.yes),'Log-in App แล้ว'],['Redeem-No',fmt(T.no),'ยังไม่ Log-in'],['% Redeem "Yes"',fp(T.pct),'Yes / Total',true],['Active Shops',fmt(shops.size),'สาขาที่มียอด'],['Avg / วัน',fmt(dates.length?T.tot/dates.length:0),dates.length+' วัน']]);
+  // tiles: all areas from data (unfiltered by area), so 15 always shown
+  const RA=filtered('area');const am=agg(RA,r=>r.area);
+  const allAreas=[...new Set([...MODEL.recs.map(r=>r.area)])].sort(areaSort);
+  const tb=$('#tiles');tb.innerHTML='';const sel=F.area||new Set();
+  allAreas.forEach(a=>{const o=am.get(a)||{yes:0,no:0,tot:0,pct:null};const t=el('div',{class:'tile'+(sel.has(a)?' sel':''),title:a},el('div',{class:'n',text:a}),el('div',{class:'row'},el('div',{class:'p num',text:fp(o.pct)}),el('div',{class:'c num',text:`Yes ${fmt(o.yes)} / ${fmt(o.tot)}`})),el('div',{class:'bar'},el('span',{style:`width:${o.pct||0}%`})));t.onclick=()=>{const S=F.area||(F.area=new Set());S.has(a)?S.delete(a):S.add(a);refreshFilterButtons();renderAll();};tb.append(t);});
+  // trend
+  const dm=agg(R,r=>r.d);const ds=[...dm.keys()].sort();
+  if(trendMode==='cnt'){legend('trendLegend',[[C.yes,'Redeem-Yes'],[C.no,'Redeem-No']]);
+    chart('chTrend',{type:'bar',data:{labels:ds.map(d=>d.slice(5)),datasets:[{label:'Redeem-Yes',data:ds.map(d=>dm.get(d).yes),backgroundColor:C.yes,borderRadius:4,stack:'s'},{label:'Redeem-No',data:ds.map(d=>dm.get(d).no),backgroundColor:C.no,borderRadius:4,stack:'s'}]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#f6e4ee'}}},plugins:{tooltip:{callbacks:{title:c=>ds[c[0].dataIndex],footer:c=>{const o=dm.get(ds[c[0].dataIndex]);return `Total ${fmt(o.tot)} · % Yes ${fp(o.pct)}`;}}}}}});}
+  else{legend('trendLegend',[[C.yes,'% Redeem "Yes" รายวัน']]);
+    chart('chTrend',{type:'line',data:{labels:ds.map(d=>d.slice(5)),datasets:[{label:'% Yes',data:ds.map(d=>dm.get(d).pct),borderColor:C.yes,backgroundColor:'rgba(230,0,126,.10)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:C.yes,pointBorderColor:'#ffffff',pointBorderWidth:2,borderWidth:2}]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#f6e4ee'},ticks:{callback:v=>v+'%'}}},plugins:{tooltip:{callbacks:{title:c=>ds[c[0].dataIndex],label:c=>{const o=dm.get(ds[c.dataIndex]);return ` % Yes ${fp(o.pct)} (Yes ${fmt(o.yes)} / ${fmt(o.tot)})`;}}}}}});}
+  legend('pieLegend',[[C.yes,`Redeem-Yes ${fmt(T.yes)} (${fp(T.pct)})`],[C.no,`Redeem-No ${fmt(T.no)} (${fp(pct(T.no,T.tot))})`]]);
+  doughnut('chPie',['Redeem-Yes','Redeem-No'],[T.yes,T.no],[C.yes,C.no],{a:fp(T.pct),b:'Redeem Yes'});
+  vendorDonut('chVendor','vendorLegend',R);
+  // tables
+  const regRows=[...agg(R,r=>r.region).values()];
+  table('#t-region',{id:'region',title:'สรุป BY Region',tag:'1.3',sub:'BMA / UPC I / UPC II อ้างอิงจาก MAN LIST',note:(()=>{const n=R.filter(r=>r.region===UNK).reduce((a,r)=>a+r.n,0);return n?`* ${fmt(n)} รายการ ไม่ระบุ Area จึงจัด Region ไม่ได้`:'';})(),cols:(()=>{const c=STD_COLS('Region');c[0].regSort=true;return c;})(),rows:regRows,total:{key:'รวม',...T},sort:['key',1]});
+  pivotTable('#t-regionDate',{id:'regionDate',title:'Region × Date',tag:'1.4',recs:R,keyFn:r=>r.region,keyLabel:'Region',regSort:true});
+  const aCols=STD_COLS('Area');aCols[0].areaSort=true;
+  table('#t-area',{id:'area',title:'สรุป BY AREA (ครบ 15 Area)',tag:'1.5',cols:aCols,rows:[...agg(R,r=>r.area).values()],total:{key:'รวม',...T},sort:['key',1]});
+  pivotTable('#t-areaDate',{id:'areaDate',title:'AREA × Date',tag:'1.6',recs:R,keyFn:r=>r.area,keyLabel:'Area',areaSort:true});
+  // shop: include shop-list shops with zero (only when no non-geo filter excludes them)
+  const sm=agg(R,r=>r.shopLabel);const shopRows=[];
+  const label2=new Map();for(const [c,s] of MODEL.shopInfo)label2.set(s.label,{code:c,...s});
+  for(const o of sm.values()){const s=label2.get(o.key);shopRows.push({...o,code:s?s.code:'',area:s?s.area:'',sl:s&&MODEL.M.shops.has(s.code)?'✓ อยู่ใน Shop List':'ไม่อยู่ใน Shop List'});}
+  const geoOnly=!['d','vendor','company','campaign','platform','region'].some(k=>F[k]&&F[k].size);
+  if(geoOnly){for(const [c,s] of MODEL.M.shops){const lab=MODEL.shopInfo.get(c).label;if(sm.has(lab))continue;const a=MODEL.shopInfo.get(c).area;if(F.area&&F.area.size&&!F.area.has(a))continue;if(F.zone&&F.zone.size&&!F.zone.has(zoneOf(a)))continue;if(F.shopLabel&&F.shopLabel.size&&!F.shopLabel.has(lab))continue;shopRows.push({key:lab,code:c,area:a,no:0,yes:0,tot:0,pct:null,sl:'ไม่มียอด (Shop List)'});}}
+  table('#t-shop',{id:'shop',title:'สรุป BY Shop',tag:'1.7',sub:'ฐานสาขาจาก SHOP LIST เทียบกับข้อมูล Redeem',limit:15,
+    cols:[{k:'key',l:'Shop',t:'txt',w:280},{k:'code',l:'Shop Code',t:'txt'},{k:'area',l:'Area',t:'txt',w:180},{k:'no',l:'Redeem-No',t:'num'},{k:'yes',l:'Redeem-Yes',t:'num'},{k:'tot',l:'Total Registered',t:'num'},{k:'pct',l:'% Redeem "Yes"',t:'pct'},{k:'sl',l:'Shop List',t:'badge',badge:v=>v.startsWith('✓')?'b-yes':v.startsWith('ไม่มียอด')?'b-no':'b-miss'}],
+    rows:shopRows,total:{key:'รวม',code:'',area:'',sl:'',...T},sort:['tot',-1]});
+  pivotTable('#t-shopDate',{id:'shopDate',title:'Shop × Date',tag:'1.8',recs:R,keyFn:r=>r.shopLabel,keyLabel:'Shop',limit:15});
+  execDash(R,T,dm,ds,regRows,shopRows);
+}
+function vendorDonut(id,lg,R){const vm=[...agg(R,r=>r.vendor).values()].sort((a,b)=>b.tot-a.tot);const tot=vm.reduce((s,o)=>s+o.tot,0);
+  const top=vm.slice(0,5),rest=vm.slice(5);const items=[...top];if(rest.length)items.push({key:'Other',tot:rest.reduce((s,o)=>s+o.tot,0)});
+  legend(lg,items.map((o,i)=>[C.cat[i],`${o.key} ${fp(pct(o.tot,tot))}`]));
+  doughnut(id,items.map(o=>o.key),items.map(o=>o.tot),items.map((o,i)=>C.cat[i]),{a:String(vm.length),b:'Vendor'});}
+
+/* ---------- exec summaries ---------- */
+function li(html,cls=''){const l=document.createElement('li');l.className=cls;l.innerHTML=html;return l;}
+function execDash(R,T,dm,ds,regRows,shopRows){
+  const u=$('#execDash');u.innerHTML='';if(!T.tot){u.append(li('ไม่มีข้อมูลตามตัวกรองที่เลือก'));return;}
+  u.append(li(`ยอด Registered รวม <b>${fmt(T.tot)}</b> รายการ · Redeem-Yes <b class="hl">${fmt(T.yes)}</b> คิดเป็น <b class="hl">${fp(T.pct)}</b> · ยังไม่ Redeem <b>${fmt(T.no)}</b> รายการ (${fp(pct(T.no,T.tot))}) ซึ่งเป็นโอกาสที่ต้องติดตามลูกค้าให้ Log-in`));
+  if(ds.length>=2){const arr=ds.map(d=>({d,...dm.get(d)}));const vol=arr.filter(x=>x.tot>=10);const best=[...vol].sort((a,b)=>b.pct-a.pct)[0],worst=[...vol].sort((a,b)=>a.pct-b.pct)[0];
+    const n=Math.min(3,Math.floor(arr.length/2));const last=arr.slice(-n),prev=arr.slice(0,-n);const lp=pct(last.reduce((s,x)=>s+x.yes,0),last.reduce((s,x)=>s+x.tot,0)),pp=pct(prev.reduce((s,x)=>s+x.yes,0),prev.reduce((s,x)=>s+x.tot,0));
+    if(best&&worst)u.append(li(`Daily Trend: วันที่ % Yes สูงสุด <b>${best.d}</b> (${fp(best.pct)}) · ต่ำสุด <b>${worst.d}</b> (${fp(worst.pct)}) · ${n} วันล่าสุดเฉลี่ย <b>${fp(lp)}</b> เทียบช่วงก่อนหน้า ${fp(pp)} (${lp>=pp?'▲ ดีขึ้น':'▼ ลดลง'} ${Math.abs(lp-pp).toFixed(1)} pts)`,lp>=pp?'g':'w'));}
+  const ar=[...agg(R,r=>r.area).values()].filter(o=>o.tot>=20&&o.key!==UNK).sort((a,b)=>b.pct-a.pct);
+  if(ar.length>=2){const h=Math.min(3,Math.floor(ar.length/2));const t3=ar.slice(0,h),b3=ar.slice(-h).reverse();u.append(li(`Area ที่ทำได้ดี: ${t3.map(o=>`<b>${esc(o.key)}</b> ${fp(o.pct)}`).join(' · ')}`,'g'));u.append(li(`Area ที่ต้องเร่ง: ${b3.map(o=>`<b>${esc(o.key)}</b> ${fp(o.pct)} (No ${fmt(o.no)})`).join(' · ')}`,'w'));}
+  const rr=regRows.filter(o=>o.tot>=20&&o.key!==UNK).sort((a,b)=>b.pct-a.pct);if(rr.length>=2)u.append(li(`Region: สูงสุด <b>${esc(rr[0].key)}</b> ${fp(rr[0].pct)} · ต่ำสุด <b>${esc(rr[rr.length-1].key)}</b> ${fp(rr[rr.length-1].pct)} · ห่างกัน ${(rr[0].pct-rr[rr.length-1].pct).toFixed(1)} pts`,'a'));
+  const zeroY=shopRows.filter(o=>o.tot>=10&&o.yes===0);const noSale=shopRows.filter(o=>o.tot===0);
+  const topNo=[...shopRows].sort((a,b)=>b.no-a.no).slice(0,5);const share=pct(topNo.reduce((s,o)=>s+o.no,0),T.no);
+  u.append(li(`Shop: มี <b>${fmt(zeroY.length)}</b> สาขาที่มียอด ≥10 แต่ Redeem-Yes = 0 · Top 5 สาขาที่มี Redeem-No สูงสุด (${topNo.map(o=>esc(o.key)).join(', ')}) รวมกันคิดเป็น <b>${fp(share)}</b> ของ Redeem-No ทั้งหมด`,'w'));
+  if(noSale.length)u.append(li(`Shop List: มี <b>${fmt(noSale.length)}</b> สาขาใน SHOP LIST ที่ยังไม่มียอด Registered ในช่วงนี้`,'a'));
+  u.append(li(`ข้อเสนอแนะ: โฟกัส Area/สาขาที่ % ต่ำและ Redeem-No สูง ให้ทีมโทรติดตามลูกค้าที่ยังไม่ Log-in (ดูรายชื่อในแท็บ By Staff → Raw Data) และใช้ Area ที่ทำได้ดีเป็นต้นแบบ`));
+}
+
+/* ====================== render: staff ====================== */
+let SF={};
+function staffModel(){
+  const R=filtered();const M=MODEL.M;
+  const stat=new Map();// id -> {yes,no,tot,shops{}}
+  for(const r of R){let s=stat.get(r.staff);if(!s){s={yes:0,no:0,tot:0,shops:{}};stat.set(r.staff,s);}if(r.y)s.yes+=r.n;else s.no+=r.n;s.tot+=r.n;s.shops[r.shop]=(s.shops[r.shop]||0)+r.n;}
+  // for attribution of master staff without home area, use all-time transactions
+  const allShops=new Map();for(const r of MODEL.recs){let o=allShops.get(r.staff);if(!o){o={};allShops.set(r.staff,o);}o[r.shop]=(o[r.shop]||0)+1;}
+  const dom=o=>{let b=null,bv=-1;for(const k in o)if(o[k]>bv){b=k;bv=o[k];}return b;};
+  const list=[];
+  const mk=(id,m,s)=>{let shop=m&&/^\d+$/.test(m.shopCode)?m.shopCode:null;let info=shop?MODEL.shopInfo.get(shop):null;
+    if(!info||info.area===UNK){const alt=dom((s&&s.shops)||allShops.get(id)||{});if(alt&&MODEL.shopInfo.get(alt)){shop=shop||alt;info=info&&info.area!==UNK?info:MODEL.shopInfo.get(alt);}}
+    const area=info?info.area:UNK;const region=MODEL.M.regionOf(area);
+    const shopLabel=info?info.label:(m?m.shopName||m.shopCode:UNK);
+    const o={id,name:m?m.name:'',type:m?m.type||UNK:UNK,company:m?m.company:'',shopCode:shop||'',shopLabel,area,zone:zoneOf(area),region,yes:s?s.yes:0,no:s?s.no:0,tot:s?s.tot:0,inM:m?'MAN LIST':'ไม่พบใน MAN LIST'};
+    o.pct=pct(o.yes,o.tot);o.status=o.yes>0?'Redeem แล้ว':o.tot>0?'ขายแต่ยังไม่ Redeem':'ไม่มียอดขาย';o.disp=o.name?o.name:o.id;return o;};
+  for(const [id,m] of M.man){if(!/^\d+$/.test(m.shopCode))continue;list.push(mk(id,m,stat.get(id)));}
+  for(const [id,s] of stat){if(M.man.has(id)&&/^\d+$/.test(M.man.get(id).shopCode))continue;list.push(mk(id,M.man.get(id),s));}
+  // geo filters
+  const geo=[['zone','zone'],['region','region'],['area','area'],['shopLabel','shopLabel']];
+  return list.filter(o=>geo.every(([fk,ok])=>!(F[fk]&&F[fk].size)||F[fk].has(o[ok])));
+}
+const SDIMS=[['type','EMP_TYPE'],['status','สถานะ'],['inM','แหล่ง ID']];
+function buildStaffFilters(){const box=$('#staffFilters');box.innerHTML='';box.append(el('span',{class:'note',text:'ตัวกรอง Staff:'}));
+  SDIMS.forEach(([k,l])=>box.append(makeMS(k,l,()=>{const L=staffModel();const cnt=new Map();L.forEach(o=>cnt.set(o[k],(cnt.get(o[k])||0)+1));return [...cnt.keys()].sort(natCmp).map(v=>({v,c:cnt.get(v)}));},SF,()=>{refreshFilterButtons();renderStaff();})));
+  const quick=el('button',{class:'btn sm',type:'button',text:'⚑ Tracking: Staff ยังไม่ Redeem'});quick.onclick=()=>{SF.status=new Set(['ขายแต่ยังไม่ Redeem','ไม่มียอดขาย']);refreshFilterButtons();renderStaff();};box.append(quick);
+  refreshFilterButtons();}
+function renderStaff(){
+  if(!$('#staffFilters').children.length)buildStaffFilters();
+  let L=staffModel();L=L.filter(o=>SDIMS.every(([k])=>!(SF[k]&&SF[k].size)||SF[k].has(o[k])));
+  const inM=L.filter(o=>o.inM==='MAN LIST');const did=L.filter(o=>o.status==='Redeem แล้ว'),sold=L.filter(o=>o.status==='ขายแต่ยังไม่ Redeem'),none=L.filter(o=>o.status==='ไม่มียอดขาย');const miss=L.filter(o=>o.inM!=='MAN LIST');
+  kpis('#kpiStaff',[['Staff ทั้งหมด',fmt(L.length),`MAN LIST ${fmt(inM.length)} · ID นอกลิสต์ ${fmt(miss.length)}`],['Redeem แล้ว',fmt(did.length),fp(pct(did.length,L.length))+' ของ Staff',true],['ขายแต่ยังไม่ Redeem',fmt(sold.length),fp(pct(sold.length,L.length))],['ไม่มียอดขาย',fmt(none.length),fp(pct(none.length,L.length))],['% Staff ทำ (ของคนที่มียอด)',fp(pct(did.length,did.length+sold.length)),'Redeem แล้ว / มียอดขาย'],['ID ไม่พบใน MAN LIST',fmt(miss.length),'แสดงเป็น ID']]);
+  // chart by area
+  const byA=new Map();L.forEach(o=>{let x=byA.get(o.area);if(!x){x={did:0,sold:0,none:0,t:0};byA.set(o.area,x);}x.t++;x[o.status==='Redeem แล้ว'?'did':o.status==='ขายแต่ยังไม่ Redeem'?'sold':'none']++;});
+  const areas=[...byA.keys()].sort(areaSort);
+  legend('staffLegend',[[C.yes,'Redeem แล้ว'],[C.sold,'ขายแต่ยังไม่ Redeem'],[C.zero,'ไม่มียอดขาย']]);
+  chart('chStaffArea',{type:'bar',data:{labels:areas,datasets:[['did','Redeem แล้ว',C.yes],['sold','ขายแต่ยังไม่ Redeem',C.sold],['none','ไม่มียอดขาย',C.zero]].map(([k,l,c])=>({label:l,data:areas.map(a=>pct(byA.get(a)[k],byA.get(a).t)),_n:areas.map(a=>byA.get(a)[k]),backgroundColor:c,borderColor:'#ffffff',borderWidth:{right:2},borderSkipped:false}))},options:{indexAxis:'y',maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f6e4ee'}},y:{stacked:true,grid:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.dataset._n[c.dataIndex])} คน (${fp(c.raw)})`,footer:c=>`Staff ทั้งหมด ${fmt(byA.get(areas[c[0].dataIndex]).t)} คน`}}}}});
+  // coverage table with dimension toggle
+  const st=TS.staffCov||(TS.staffCov={sort:['pDid',-1],dim:'area'});
+  const dimKey={region:'region',area:'area',shop:'shopLabel'}[st.dim];
+  const cov=new Map();L.forEach(o=>{const k=o[dimKey];let x=cov.get(k);if(!x){x={key:k,t:0,did:0,sold:0,none:0,yes:0,no:0};cov.set(k,x);}x.t++;x[o.status==='Redeem แล้ว'?'did':o.status==='ขายแต่ยังไม่ Redeem'?'sold':'none']++;x.yes+=o.yes;x.no+=o.no;});
+  const covRows=[...cov.values()].map(x=>({...x,pDid:pct(x.did,x.t),pAct:pct(x.did,x.did+x.sold)}));
+  const ct={key:'รวม',t:L.length,did:did.length,sold:sold.length,none:none.length,yes:L.reduce((s,o)=>s+o.yes,0),no:L.reduce((s,o)=>s+o.no,0)};ct.pDid=pct(ct.did,ct.t);ct.pAct=pct(ct.did,ct.did+ct.sold);
+  const dimL={region:'Region',area:'Area',shop:'Shop'};
+  table('#t-staffCov',{id:'staffCov',title:'สัดส่วน Staff ทำ / ไม่ทำ Redeem',tag:'2.1',sub:'มุมมอง: By '+dimL[st.dim],limit:st.dim==='shop'?15:null,
+    cols:[{k:'key',l:dimL[st.dim],t:'txt',w:280,areaSort:st.dim==='area',regSort:st.dim==='region'},{k:'t',l:'Staff ทั้งหมด',t:'num'},{k:'did',l:'Redeem แล้ว',t:'num'},{k:'sold',l:'ขายแต่ยังไม่ Redeem',t:'num'},{k:'none',l:'ไม่มียอดขาย',t:'num'},{k:'pDid',l:'% Staff ทำ Redeem',t:'pct'},{k:'pAct',l:'% ทำ (ของคนที่มียอด)',t:'pct'},{k:'no',l:'Redeem-No',t:'num'},{k:'yes',l:'Redeem-Yes',t:'num'}],
+    rows:covRows,total:ct,sort:st.sort,
+    extra:acts=>{const seg=el('div',{class:'seg'});Object.entries(dimL).forEach(([k,l])=>{const b=el('button',{class:st.dim===k?'on':'',type:'button',text:'By '+l});b.onclick=()=>{st.dim=k;renderStaff();};seg.append(b);});acts.append(seg);}});
+  // staff table
+  const Ts={key:'รวม',yes:ct.yes,no:ct.no,tot:ct.yes+ct.no};Ts.pct=pct(Ts.yes,Ts.tot);
+  table('#t-staff',{id:'staff',title:'สรุป BY Staff',tag:'2.2',sub:'ไม่มีชื่อใน MAN LIST จะแสดงเป็น ID',limit:15,
+    cols:[{k:'id',l:'Staff ID',t:'txt'},{k:'disp',l:'ชื่อ',t:'txt',w:200},{k:'type',l:'EMP_TYPE',t:'txt'},{k:'shopLabel',l:'Shop',t:'txt',w:240},{k:'area',l:'Area',t:'txt',w:180},{k:'region',l:'Region',t:'txt'},{k:'no',l:'Redeem-No',t:'num'},{k:'yes',l:'Redeem-Yes',t:'num'},{k:'tot',l:'Total Registered',t:'num'},{k:'pct',l:'% Redeem "Yes"',t:'pct'},{k:'status',l:'สถานะ',t:'badge',badge:v=>v==='Redeem แล้ว'?'b-yes':v==='ขายแต่ยังไม่ Redeem'?'b-no':'b-zero'},{k:'inM',l:'แหล่ง ID',t:'badge',badge:v=>v==='MAN LIST'?'b-zero':'b-miss'}],
+    rows:L.map(o=>({...o,key:o.id})),total:{id:'รวม',disp:'',type:'',shopLabel:'',area:'',region:'',status:'',inM:'',...Ts},sort:['no',-1]});
+  renderRaw();
+  execStaff(L,did,sold,none,miss,covRows);
+}
+let rawPage=0;
+$('#rawSearch').addEventListener('input',()=>{rawPage=0;renderRaw();});
+function rawRows(){const R=filtered();const q=$('#rawSearch').value.trim().toLowerCase();let idxs=R.map(r=>r.i);if(q)idxs=idxs.filter(i=>RAW.rows[i].some(v=>String(v).toLowerCase().includes(q)));return idxs;}
+function renderRaw(){
+  const idxs=rawRows();const PS=50;const pages=Math.max(1,Math.ceil(idxs.length/PS));rawPage=Math.min(rawPage,pages-1);
+  const st=TS.raw||(TS.raw={sort:null});
+  if(st.sort){const [c,d]=st.sort;idxs.sort((a,b)=>natCmp(RAW.rows[a][c],RAW.rows[b][c])*d);}
+  $('#rawSub').textContent=`${fmt(idxs.length)} แถว · ${RAW.cols.length} คอลัมน์ (ตามตัวกรอง)`;
+  const t=el('table',{class:'t'});const tr=el('tr');
+  RAW.cols.forEach((c,ci)=>{const th=el('th',{class:st.sort&&st.sort[0]===ci?'sorted':''},c||('Col'+(ci+1)),st.sort&&st.sort[0]===ci?el('span',{class:'ar',text:st.sort[1]>0?'▲':'▼'}):null);th.onclick=()=>{st.sort=[ci,st.sort&&st.sort[0]===ci?-st.sort[1]:1];renderRaw();};tr.append(th);});
+  const tb=el('tbody');idxs.slice(rawPage*PS,rawPage*PS+PS).forEach(i=>{const r=el('tr');RAW.rows[i].forEach(v=>{const td=el('td');const s=el('span',{class:'trunc',text:v,title:v});s.style.maxWidth='220px';td.append(s);td.onclick=()=>td.classList.toggle('open');r.append(td);});tb.append(r);});
+  t.append(el('thead',{},tr),tb);const w=$('#rawWrap');w.innerHTML='';w.append(t);
+  const f=$('#rawFoot');f.innerHTML='';const prev=el('button',{class:'btn sm',type:'button',text:'‹ ก่อนหน้า'}),next=el('button',{class:'btn sm',type:'button',text:'ถัดไป ›'});prev.disabled=rawPage===0;next.disabled=rawPage>=pages-1;prev.onclick=()=>{rawPage--;renderRaw();};next.onclick=()=>{rawPage++;renderRaw();};
+  f.append(prev,el('span',{text:`หน้า ${rawPage+1} / ${pages}`}),next,el('span',{text:'คลิกหัวคอลัมน์เพื่อเรียง · คลิกช่องเพื่อดูข้อความเต็ม'}));
+}
+$('#rawExport').onclick=()=>{const idxs=rawRows();if(!idxs.length){toast('ไม่มีข้อมูลให้ Export');return;}const aoa=[RAW.cols,...idxs.map(i=>RAW.rows[i])];saveXlsx('TVS_Redeem_RawData_'+new Date().toISOString().slice(0,10),aoa);};
+function execStaff(L,did,sold,none,miss,cov){
+  const u=$('#execStaff');u.innerHTML='';if(!L.length){u.append(li('ไม่มีข้อมูล Staff ตามตัวกรอง'));return;}
+  u.append(li(`Staff ในฐาน <b>${fmt(L.length)}</b> คน · ทำ Redeem แล้ว <b class="hl">${fmt(did.length)}</b> (${fp(pct(did.length,L.length))}) · ขายแต่ยังไม่ Redeem <b>${fmt(sold.length)}</b> · ไม่มียอดขาย <b>${fmt(none.length)}</b>`));
+  const totNo=L.reduce((s,o)=>s+o.no,0);const top=[...L].sort((a,b)=>b.no-a.no).slice(0,10);
+  u.append(li(`Top 10 Staff ที่มี Redeem-No สูงสุด รวม <b>${fmt(top.reduce((s,o)=>s+o.no,0))}</b> รายการ = <b>${fp(pct(top.reduce((s,o)=>s+o.no,0),totNo))}</b> ของ Redeem-No · สูงสุดคือ <b>${esc(top[0].disp)}</b> (${esc(top[0].shopLabel)}) No ${fmt(top[0].no)}`,'w'));
+  const c2=cov.filter(o=>o.t>=5&&o.key!==UNK).sort((a,b)=>(a.pDid??0)-(b.pDid??0));
+  if(c2.length>=2){const h=Math.min(3,Math.floor(c2.length/2));u.append(li(`สัดส่วน Staff ที่ทำ Redeem ต่ำสุด: ${c2.slice(0,h).map(o=>`<b>${esc(o.key)}</b> ${fp(o.pDid)}`).join(' · ')} · สูงสุด: ${c2.slice(-h).reverse().map(o=>`<b>${esc(o.key)}</b> ${fp(o.pDid)}`).join(' · ')}`,'a'));}
+  const zeroBig=sold.filter(o=>o.tot>=5).length;if(zeroBig)u.append(li(`มี <b>${fmt(zeroBig)}</b> Staff ที่ขายตั้งแต่ 5 รายการขึ้นไปแต่ยังไม่มี Redeem-Yes เลย — ควรโค้ชวิธีช่วยลูกค้า Log-in TVS Now ที่หน้าร้าน`,'w'));
+  if(miss.length)u.append(li(`พบ <b>${fmt(miss.length)}</b> Sale Represent ID ที่ไม่อยู่ใน MAN LIST (แสดงเป็น ID) — Admin ควรอัปเดต MAN LIST ให้เป็นปัจจุบัน`,'a'));
+  u.append(li(`ข้อเสนอแนะ: ใช้ปุ่ม <b>⚑ Tracking</b> เพื่อดูรายชื่อ Staff ที่ยังไม่ Redeem แล้ว Export ส่งให้ Area Manager ติดตามรายวัน`));
+}
+
+/* ====================== render: campaign ====================== */
+function renderCamp(){
+  const R=filtered();const T=totals(R);const vm=[...agg(R,r=>r.vendor).values()];const pm=[...agg(R,r=>r.promo).values()];
+  kpis('#kpiCamp',[['Total Registered',fmt(T.tot)],['% Redeem "Yes"',fp(T.pct),'',true],['VENDOR',fmt(vm.length)],['PROMOTION',fmt(pm.length)],['CAMPAIGN',fmt(new Set(R.map(r=>r.campaign)).size)]]);
+  vendorDonut('chVendor2','vendor2Legend',R);
+  const vs=[...vm].sort((a,b)=>b.tot-a.tot);
+  legend('vendorBarLegend',[[C.yes,'Redeem-Yes'],[C.no,'Redeem-No']]);
+  chart('chVendorBar',{type:'bar',data:{labels:vs.map(o=>o.key),datasets:[{label:'Redeem-Yes',data:vs.map(o=>o.yes),backgroundColor:C.yes,borderRadius:4,stack:'s'},{label:'Redeem-No',data:vs.map(o=>o.no),backgroundColor:C.no,borderRadius:4,stack:'s'}]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#f6e4ee'}}},plugins:{tooltip:{callbacks:{footer:c=>{const o=vs[c[0].dataIndex];return `Total ${fmt(o.tot)} · % Yes ${fp(o.pct)}`;}}}}}});
+  const share=rows=>rows.map(o=>({...o,share:pct(o.tot,T.tot)}));
+  const colsS=k=>[...STD_COLS(k),{k:'share',l:'สัดส่วนยอด',t:'pct'}];
+  const tot={key:'รวม',...T,share:100};
+  table('#t-vendor',{id:'vendor',title:'สรุปสัดส่วน VENDOR',tag:'4.1',cols:colsS('VENDOR'),rows:share(vm),total:tot,sort:['tot',-1]});
+  const ps=[...pm].sort((a,b)=>b.tot-a.tot).slice(0,15);
+  legend('promoLegend',[[C.yes,'Redeem-Yes'],[C.no,'Redeem-No']]);
+  chart('chPromo',{type:'bar',data:{labels:ps.map(o=>o.key.length>48?o.key.slice(0,46)+'…':o.key),datasets:[{label:'Redeem-Yes',data:ps.map(o=>o.yes),backgroundColor:C.yes,stack:'s',borderColor:'#ffffff',borderWidth:{right:2},borderSkipped:false},{label:'Redeem-No',data:ps.map(o=>o.no),backgroundColor:C.no,stack:'s',borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,grid:{color:'#f6e4ee'}},y:{stacked:true,grid:{display:false},ticks:{font:{size:11}}}},plugins:{tooltip:{callbacks:{title:c=>ps[c[0].dataIndex].key,footer:c=>{const o=ps[c[0].dataIndex];return `Total ${fmt(o.tot)} · % Yes ${fp(o.pct)}`;}}}}}});
+  const promoVendor=new Map();R.forEach(r=>{if(!promoVendor.has(r.promo))promoVendor.set(r.promo,r.vendor);});
+  table('#t-promo',{id:'promo',title:'สรุป PROMOTION_DESC',tag:'4.2',limit:15,cols:[{k:'key',l:'PROMOTION_DESC',t:'txt',w:360},{k:'vendor',l:'VENDOR',t:'txt'},...colsS('').slice(1)],rows:share(pm).map(o=>({...o,vendor:promoVendor.get(o.key)})),total:{...tot,vendor:''},sort:['tot',-1]});
+  table('#t-campaign',{id:'campaign',title:'สรุป CAMPAIGN',limit:15,cols:colsS('CAMPAIGN'),rows:share([...agg(R,r=>r.campaign).values()]),total:tot,sort:['tot',-1]});
+  table('#t-company',{id:'company',title:'สรุป COMPANY (Product)',limit:15,cols:colsS('COMPANY'),rows:share([...agg(R,r=>r.company).values()]),total:tot,sort:['tot',-1]});
+  const u=$('#execCamp');u.innerHTML='';if(!T.tot){u.append(li('ไม่มีข้อมูลตามตัวกรอง'));return;}
+  const v0=vs[0];u.append(li(`VENDOR หลักคือ <b>${esc(v0.key)}</b> สัดส่วน <b>${fp(pct(v0.tot,T.tot))}</b> ของยอด มี % Yes <b class="hl">${fp(v0.pct)}</b> (ภาพรวม ${fp(T.pct)})`));
+  const vv=vs.filter(o=>o.tot>=20).sort((a,b)=>b.pct-a.pct);if(vv.length>=2)u.append(li(`VENDOR ที่ % Yes สูงสุด <b>${esc(vv[0].key)}</b> ${fp(vv[0].pct)} · ต่ำสุด <b>${esc(vv[vv.length-1].key)}</b> ${fp(vv[vv.length-1].pct)}`,'a'));
+  const p0=[...pm].sort((a,b)=>b.tot-a.tot)[0];u.append(li(`PROMOTION ยอดสูงสุด <b>${esc(p0.key)}</b> ${fmt(p0.tot)} รายการ (${fp(pct(p0.tot,T.tot))}) · % Yes ${fp(p0.pct)}`));
+  const big=pm.filter(o=>o.tot>=30);const lowP=[...big].sort((a,b)=>a.pct-b.pct).slice(0,3),hiP=[...big].sort((a,b)=>b.pct-a.pct).slice(0,3);
+  if(lowP.length)u.append(li(`PROMOTION ยอดสูงแต่ % Yes ต่ำ (ยอด ≥30): ${lowP.map(o=>`<b>${esc(o.key)}</b> ${fp(o.pct)}`).join(' · ')}`,'w'));
+  if(hiP.length)u.append(li(`PROMOTION ที่ % Yes ดีที่สุด (ยอด ≥30): ${hiP.map(o=>`<b>${esc(o.key)}</b> ${fp(o.pct)}`).join(' · ')}`,'g'));
+  u.append(li(`ข้อเสนอแนะ: แพ็กเกจ 5G Device / Super Value เป็นฐานยอดหลัก — ควรมีขั้นตอน Log-in TVS Now ที่หน้าร้านทันทีหลังเปิดเบอร์ เพื่อยก % Yes ของกลุ่มที่ยอดสูง`));
+}
+
+/* ====================== admin ====================== */
+function renderAdmin(){
+  const rm=RED.meta||{},mm=MAS.meta||{};
+  const ds=[...new Set(MODEL.recs.map(r=>r.d))].sort();
+  const kv=(id,arr)=>{const b=$(id);b.innerHTML='';arr.forEach(([k,v])=>b.append(el('div',{text:k}),el('div',{text:v})));};
+  kv('#curRedeem',[['ไฟล์ปัจจุบัน',rm.fileName||'-'],['อัปเดตเมื่อ',rm.uploadedAt||'-'],['จำนวนแถว',fmt(RAW.rows.length)],['ช่วงวันที่',ds.length?ds[0]+' – '+ds[ds.length-1]:'-']]);
+  kv('#curMaster',[['ไฟล์ปัจจุบัน',mm.fileName||'-'],['อัปเดตเมื่อ',mm.uploadedAt||'-'],['MAN LIST',fmt(MAS.man?MAS.man.rows.length:0)+' แถว / '+fmt(MODEL.M.man.size)+' ID'],['SHOP LIST',fmt(MODEL.M.shops.size)+' สาขา']]);
+  const dataShops=new Map();MODEL.recs.forEach(r=>{let o=dataShops.get(r.shop);if(!o){o={yes:0,no:0,tot:0,area:r.area,name:r.shopName};dataShops.set(r.shop,o);}r.y?o.yes+=r.n:o.no+=r.n;o.tot+=r.n;});
+  const noSale=[...MODEL.M.shops.values()].filter(s=>!dataShops.has(s.code)&&!dataShops.has(s.tds));
+  const notM=[...dataShops.entries()].filter(([c])=>!MODEL.M.shops.has(c)&&!MODEL.M.shopsTds.has(c)).map(([c,o])=>({key:o.name,code:c,area:o.area,...o,pct:pct(o.yes,o.tot)}));
+  const staffIds=new Map();MODEL.recs.forEach(r=>{let o=staffIds.get(r.staff);if(!o){o={yes:0,no:0,tot:0,shop:r.shopLabel,area:r.area};staffIds.set(r.staff,o);}r.y?o.yes+=r.n:o.no+=r.n;o.tot+=r.n;});
+  const sNot=[...staffIds.entries()].filter(([id])=>!MODEL.M.man.has(id)).map(([id,o])=>({key:id,...o,pct:pct(o.yes,o.tot)}));
+  kpis('#kpiMatch',[['สาขาใน SHOP LIST',fmt(MODEL.M.shops.size)],['สาขาในข้อมูล Redeem',fmt(dataShops.size)],['Shop List ที่ไม่มียอด',fmt(noSale.length),'',noSale.length>0],['สาขาในข้อมูลที่ไม่อยู่ใน Shop List',fmt(notM.length)],['Staff ID ไม่พบใน MAN LIST',fmt(sNot.length)]]);
+  table('#t-shopNoSale',{id:'shopNoSale',title:'สาขาใน SHOP LIST ที่ยังไม่มียอด',limit:15,cols:[{k:'name',l:'Shop',t:'txt',w:260},{k:'code',l:'Shop Code',t:'txt'},{k:'area',l:'Area',t:'txt'},{k:'type',l:'Type',t:'txt'}],rows:noSale,sort:['area',1]});
+  table('#t-shopNotMaster',{id:'shopNotMaster',title:'สาขาในข้อมูลที่ไม่อยู่ใน SHOP LIST',limit:15,cols:[{k:'key',l:'Shop',t:'txt',w:260},{k:'code',l:'Partner Code',t:'txt'},{k:'area',l:'Area',t:'txt'},{k:'tot',l:'Total',t:'num'},{k:'pct',l:'% Yes',t:'pct'}],rows:notM,sort:['tot',-1]});
+  table('#t-staffNotMaster',{id:'staffNotMaster',title:'Sale Represent ID ที่ไม่พบใน MAN LIST',limit:15,cols:[{k:'key',l:'ID',t:'txt'},{k:'shop',l:'Shop (ล่าสุด)',t:'txt',w:260},{k:'area',l:'Area',t:'txt'},{k:'no',l:'Redeem-No',t:'num'},{k:'yes',l:'Redeem-Yes',t:'num'},{k:'tot',l:'Total',t:'num'},{k:'pct',l:'% Yes',t:'pct'}],rows:sNot,sort:['tot',-1]});
+}
+function readWorkbook(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>{try{res(XLSX.read(new Uint8Array(fr.result),{type:'array',cellDates:true}));}catch(e){rej(e);}};fr.onerror=()=>rej(fr.error);fr.readAsArrayBuffer(file);});}
+function cellStr(v){if(v==null)return '';if(v instanceof Date){const d=new Date(v.getTime()+12*36e5);return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');}if(typeof v==='number')return Number.isInteger(v)?String(v):String(+v.toFixed(6));return String(v).trim();}
+function sheetAoa(ws){return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''}).map(r=>r.map(cellStr));}
+function findHeader(aoa,keys){for(let i=0;i<Math.min(15,aoa.length);i++){const up=aoa[i].map(c=>c.toUpperCase());if(keys.every(k=>up.includes(k)))return i;}return -1;}
+function trimTbl(cols,rows){while(cols.length&&cols[cols.length-1]==='')cols=cols.slice(0,-1);rows=rows.filter(r=>r.some(v=>v!=='')).map(r=>{const x=r.slice(0,cols.length);while(x.length<cols.length)x.push('');return x;});return {cols,rows};}
+function stamp(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function msg(id,cls,t){const m=$(id);m.className='msg show '+cls;m.innerHTML=t;}
+let pending={redeem:null,master:null};
+function setupDrop(drop,input,handler){const d=$(drop),i=$(input);d.onclick=()=>i.click();i.onchange=()=>i.files[0]&&handler(i.files[0]);d.ondragover=e=>{e.preventDefault();d.classList.add('over');};d.ondragleave=()=>d.classList.remove('over');d.ondrop=e=>{e.preventDefault();d.classList.remove('over');e.dataTransfer.files[0]&&handler(e.dataTransfer.files[0]);};}
+setupDrop('#dropRedeem','#fileRedeem',async f=>{
+  msg('#msgRedeem','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actRedeem').classList.add('hide');
+  try{const wb=await readWorkbook(f);let found=null;
+    for(const n of wb.SheetNames){const aoa=sheetAoa(wb.Sheets[n]);const h=findHeader(aoa,['STATUS_REDEEM']);if(h>=0){found={n,aoa,h};break;}}
+    if(!found)throw new Error('ไม่พบ Sheet ที่มีคอลัมน์ STATUS_REDEEM');
+    const t=trimTbl(found.aoa[found.h],found.aoa.slice(found.h+1));
+    const need=[['TM_KEY_DATE'],['PARTNER_CODE'],['SALE_REPRESENT']];const miss=need.filter(c=>colIdx(t.cols,c)<0).map(c=>c[0]);
+    if(miss.length)throw new Error('ไม่พบคอลัมน์: '+miss.join(', '));
+    const iS=colIdx(t.cols,['STATUS_REDEEM']),iD=colIdx(t.cols,['TM_KEY_DATE']);let y=0;const ds=new Set();t.rows.forEach(r=>{if(String(r[iS]).toUpperCase().includes('YES'))y++;ds.add(normDate(r[iD]));});const dl=[...ds].filter(Boolean).sort();
+    pending.redeem={cols:t.cols,rows:t.rows,meta:{fileName:f.name,sheet:found.n,uploadedAt:stamp(),by:'admin'}};
+    msg('#msgRedeem','ok',`อ่านไฟล์สำเร็จ · Sheet <b>${esc(found.n)}</b> · <b>${fmt(t.rows.length)}</b> แถว · ${t.cols.length} คอลัมน์ · วันที่ ${dl[0]||'-'} – ${dl[dl.length-1]||'-'} · Redeem-Yes ${fmt(y)} (${fp(pct(y,t.rows.length))})`);
+    $('#actRedeem').classList.remove('hide');
+  }catch(e){msg('#msgRedeem','er','อ่านไฟล์ไม่สำเร็จ: '+esc(e.message));}
+});
+setupDrop('#dropMaster','#fileMaster',async f=>{
+  msg('#msgMaster','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actMaster').classList.add('hide');
+  try{const wb=await readWorkbook(f);const out={meta:{fileName:f.name,uploadedAt:stamp(),by:'admin'}};
+    for(const n of wb.SheetNames){const aoa=sheetAoa(wb.Sheets[n]);let h=findHeader(aoa,['EMP_ID']);if(h>=0&&!out.man){out.man=trimTbl(aoa[h],aoa.slice(h+1));continue;}h=findHeader(aoa,['SHOP CODE']);if(h<0)h=findHeader(aoa,['SHOP_CODE','AREA']);if(h>=0&&!out.shop)out.shop=trimTbl(aoa[h],aoa.slice(h+1));}
+    if(!out.man&&!out.shop)throw new Error('ไม่พบ Sheet MAN LIST (EMP_ID) หรือ SHOP LIST (SHOP CODE)');
+    if(!out.man){out.man=MAS.man;out.meta.note='ใช้ MAN LIST เดิม';}if(!out.shop){out.shop=MAS.shop;out.meta.note='ใช้ SHOP LIST เดิม';}
+    pending.master=out;
+    msg('#msgMaster','ok',`อ่านไฟล์สำเร็จ · MAN LIST <b>${fmt(out.man.rows.length)}</b> แถว · SHOP LIST <b>${fmt(out.shop.rows.length)}</b> สาขา${out.meta.note?' · '+out.meta.note:''}`);
+    $('#actMaster').classList.remove('hide');
+  }catch(e){msg('#msgMaster','er','อ่านไฟล์ไม่สำเร็จ: '+esc(e.message));}
+});
+function applyRedeem(){const p=pending.redeem;RED=encodeRedeem(p.cols,p.rows,p.meta);RAW={cols:p.cols,rows:p.rows};}
+function applyMaster(){MAS=pending.master;}
+let ART=null;
+async function publishData(which){
+  const btn=$(which==='redeem'?'#pubRedeem':'#pubMaster');const mid=which==='redeem'?'#msgRedeem':'#msgMaster';btn.disabled=true;
+  try{
+    if(!ART)ART=await claude.use('artifact');
+    if(!ART)throw {code:'unavailable'};
+    if(which==='redeem')applyRedeem();else applyMaster();
+    const files=which==='redeem'?{'data/redeem.json':{content:JSON.stringify(RED),contentType:'application/json'}}:{'data/master.json':{content:JSON.stringify(MAS),contentType:'application/json'}};
+    msg(mid,'in','กำลังบันทึกและเผยแพร่...');
+    await ART.publish(files);
+    rebuild();msg(mid,'ok','✓ บันทึกเรียบร้อย ผู้ใช้ทุกคนจะเห็นข้อมูลใหม่เมื่อเปิด/รีเฟรชหน้า');toast('อัปเดตข้อมูลสำเร็จ');
+    $(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');
+  }catch(e){
+    const c=e&&e.code;rebuild();
+    const why=c==='not_writer'||c==='not_granted'?'บัญชีนี้ไม่มีสิทธิ์แก้ไขหน้า Dashboard (ต้องเป็นเจ้าของหรือ Editor)':c==='conflict'?'มีคนอัปเดตก่อนหน้า กำลังโหลดเวอร์ชันล่าสุด':c==='too_large'?'ไฟล์ใหญ่เกินกำหนด':'ไม่สามารถบันทึกในมุมมองนี้ได้ ('+(c||(e&&e.message)||'error')+')';
+    msg(mid,'er','บันทึกให้ทุกคนไม่สำเร็จ: '+esc(why)+' — ข้อมูลใหม่แสดงเฉพาะเครื่องนี้ชั่วคราว');
+  }finally{btn.disabled=false;}
+}
+$('#pubRedeem').onclick=()=>publishData('redeem');$('#pubMaster').onclick=()=>publishData('master');
+$('#locRedeem').onclick=()=>{applyRedeem();defaultMonthSet=false;F={};rebuild();msg('#msgRedeem','in','แสดงข้อมูลใหม่เฉพาะเครื่องนี้ (ยังไม่บันทึก) — รีเฟรชหน้าจะกลับเป็นข้อมูลเดิม');};
+$('#locMaster').onclick=()=>{applyMaster();rebuild();msg('#msgMaster','in','แสดงข้อมูลใหม่เฉพาะเครื่องนี้ (ยังไม่บันทึก)');};
+
+/* ====================== routing ====================== */
+let VIEW='dash';
+$('#tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;go(t.dataset.v);});
+function go(v){if(v==='admin'&&ROLE!=='admin')v='dash';VIEW=v;$$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.v===v));$$('.view').forEach(x=>x.classList.toggle('active',x.id==='v-'+v));try{history.replaceState(null,'','#'+v);}catch(e){}renderView();}
+function renderView(){if(!MODEL)return;if(VIEW==='dash')renderDash();else if(VIEW==='staff')renderStaff();else if(VIEW==='camp')renderCamp();else if(VIEW==='admin')renderAdmin();}
+function renderAll(){renderView();}
+function renderDataInfo(){const rm=RED.meta||{},mm=MAS.meta||{};const ds=[...new Set(MODEL.recs.map(r=>r.d))].filter(Boolean).sort();$('#dataInfo').innerHTML=`ข้อมูล Redeem: <b>${esc(rm.fileName||'-')}</b> · ${fmt(RAW.rows.length)} แถว · ${ds[0]||''} – ${ds[ds.length-1]||''} · อัปเดต ${esc(rm.uploadedAt||'-')} &nbsp;|&nbsp; Master: <b>${esc(mm.fileName||'-')}</b> · อัปเดต ${esc(mm.uploadedAt||'-')}`;}
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(['dash','staff','camp','admin'].includes(h)&&h!==VIEW)go(h);});
+(function init(){const h=location.hash.slice(1);if(['dash','staff','camp','admin'].includes(h))VIEW=h;const r=ssGet('tvsRole');if(r==='admin'||r==='user'){enter(r);go(VIEW);}})();
+</script>
+</body>
+</html>
