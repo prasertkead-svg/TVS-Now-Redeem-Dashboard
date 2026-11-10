@@ -176,6 +176,11 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
 .loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--ink2);z-index:90;background:#fff}
 .spin{width:38px;height:38px;border-radius:50%;border:3px solid #f6d6e6;border-top-color:var(--pink);animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 18px 10px;font-size:12px;color:var(--mute)}
+.chips:empty{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--pinkSoft);border:1px solid rgba(230,0,126,.35);color:var(--pink);padding:3px 4px 3px 10px;border-radius:20px}
+.chip b{font-weight:500}
+.chip button{border:0;background:#fff;color:var(--pink);width:18px;height:18px;border-radius:50%;cursor:pointer;line-height:1;font-size:12px;padding:0}
 .hide{display:none!important}
 </style>
 </head>
@@ -208,6 +213,7 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
   </div>
   <div class="datainfo" id="dataInfo"></div>
   <div class="filters" id="filters"></div>
+  <div class="chips" id="chips"></div>
 </header>
 
 <main>
@@ -216,7 +222,7 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
   <div class="grid g-kpi" id="kpiDash"></div>
 
   <div class="section-title">AREA SCORECARD · 15 AREA</div>
-  <div class="card" id="c-tiles"><div class="card-h"><h3>% Redeem "Yes" ทุก Area</h3><span class="sub">คลิกที่ Area เพื่อกรอง (เลือกได้หลาย Area)</span><div class="acts"></div></div><div class="card-b"><div class="tiles" id="tiles"></div></div></div>
+  <div class="card" id="c-tiles"><div class="card-h"><h3>% Redeem "Yes" ทุก Area</h3><span class="sub" id="tilesSub">คลิกที่ Area เพื่อกรอง (เลือกได้หลาย Area)</span><div class="acts"></div></div><div class="card-b"><div class="tiles" id="tiles"></div></div></div>
 
   <div class="section-title">TREND & MIX</div>
   <div class="grid g-3">
@@ -245,7 +251,7 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
   <div class="filters" style="padding:0 0 12px;border:0" id="staffFilters"></div>
   <div class="grid g-kpi" id="kpiStaff"></div>
   <div class="section-title">2.1 STAFF ทำ / ไม่ทำ REDEEM</div>
-  <div class="card" id="c-staffArea"><div class="card-h"><h3><span class="tag">2.1</span>สัดส่วน Staff ทำ / ไม่ทำ Redeem ราย Area</h3><span class="sub">ฐาน Staff จาก MAN LIST</span></div><div class="card-b"><div class="legend" id="staffLegend"></div><div class="chart-box tall"><canvas id="chStaffArea"></canvas></div></div></div>
+  <div class="card" id="c-staffArea"><div class="card-h"><h3><span class="tag">2.1</span>สัดส่วน Staff ทำ / ไม่ทำ Redeem ราย Area</h3><span class="sub">ฐาน Staff จาก MAN LIST · ใช้ตัวกรองด้านบนทั้งหมด</span></div><div class="card-b"><div class="legend" id="staffLegend"></div><div class="chart-box tall"><canvas id="chStaffArea"></canvas></div></div></div>
   <div id="t-staffCov"></div>
   <div class="section-title">2.2 BY STAFF</div>
   <div id="t-staff"></div>
@@ -446,6 +452,7 @@ function rebuild(){
 /* ====================== filters ====================== */
 const DIMS=[['m','เดือน'],['d','วันที่'],['region','Region'],['area','Area'],['shopLabel','Shop'],['vendor','Vendor'],['company','Company'],['campaign','Campaign'],['platform','Platform']];
 let F={};let defaultMonthSet=false;
+try{const sv=JSON.parse(sessionStorage.getItem('tvsF')||'null');if(sv){for(const k in sv)F[k]=new Set(sv[k]);defaultMonthSet=true;}}catch(e){}
 function passes(r,skip){for(const [k] of DIMS){if(k===skip)continue;const s=F[k];if(s&&s.size&&!s.has(r[k]))return false;}return true;}
 function filtered(skip){return MODEL.recs.filter(r=>passes(r,skip));}
 function buildFilters(){
@@ -471,7 +478,11 @@ function makeMS(k,label,optsFn,store,onChange){
 }
 document.addEventListener('click',()=>$$('.ms.open').forEach(x=>x.classList.remove('open')));
 function msLabel(wrap,store){const k=wrap.dataset.k,s=store[k];const n=s?s.size:0;wrap._btn.classList.toggle('act',n>0);wrap._btn.innerHTML='';wrap._btn.append(el('span',{text:wrap._label+':'}),el('b',{text:n===0?'ทั้งหมด':n===1?[...s][0]:n+' รายการ'}),el('span',{text:'▾'}));}
-function refreshFilterButtons(){$$('#filters .ms').forEach(w=>msLabel(w,F));$$('#staffFilters .ms').forEach(w=>msLabel(w,SF));}
+function activeFilterText(){return DIMS.filter(([k])=>F[k]&&F[k].size).map(([k,l])=>l+'='+[...F[k]].join(',')).join(' · ');}
+function refreshFilterButtons(){$$('#filters .ms').forEach(w=>msLabel(w,F));$$('#staffFilters .ms').forEach(w=>msLabel(w,SF));
+  const box=$('#chips');box.innerHTML='';const act=DIMS.filter(([k])=>F[k]&&F[k].size);
+  if(act.length){box.append(el('span',{text:'กำลังกรองทุกหน้า:'}));act.forEach(([k,l])=>{const v=[...F[k]];const x=el('button',{type:'button',title:'ลบตัวกรองนี้',text:'×'});x.onclick=()=>{F[k]=new Set();refreshFilterButtons();renderAll();};box.append(el('span',{class:'chip'},el('span',{},l+': '),el('b',{text:v.length>3?v.slice(0,3).join(', ')+' +'+(v.length-3):v.join(', ')}),x));});}
+  try{sessionStorage.setItem('tvsF',JSON.stringify(Object.fromEntries(Object.entries(F).map(([k,v])=>[k,[...v]]))));}catch(e){}}
 $('#btnReset').onclick=()=>{F={};SF={};$$('#staffFilters .ms').length&&buildStaffFilters();refreshFilterButtons();renderAll();};
 
 /* ====================== aggregation ====================== */
@@ -585,7 +596,8 @@ function renderDash(){
   kpis('#kpiDash',[['Total Registered',fmt(T.tot),dates.length?`${dates[0]} – ${dates[dates.length-1]}`:''],['Redeem-Yes',fmt(T.yes),'Log-in App แล้ว'],['Redeem-No',fmt(T.no),'ยังไม่ Log-in'],['% Redeem "Yes"',fp(T.pct),'Yes / Total',true],['Active Shops',fmt(shops.size),'สาขาที่มียอด'],['Avg / วัน',fmt(dates.length?T.tot/dates.length:0),dates.length+' วัน']]);
   // tiles: all areas from data (unfiltered by area), so 15 always shown
   const RA=filtered('area');const am=agg(RA,r=>r.area);
-  const allAreas=[...new Set([...MODEL.recs.map(r=>r.area)])].sort(areaSort);
+  const allAreas=[...new Set([...am.keys(),...(F.area||[])])].sort(areaSort);
+  $('#tilesSub').textContent=`แสดง ${allAreas.length} Area ตามตัวกรอง · คลิกที่ Area เพื่อกรอง (เลือกได้หลาย Area)`;
   const tb=$('#tiles');tb.innerHTML='';const sel=F.area||new Set();
   allAreas.forEach(a=>{const o=am.get(a)||{yes:0,no:0,tot:0,pct:null};const t=el('div',{class:'tile'+(sel.has(a)?' sel':''),title:a},el('div',{class:'n',text:a}),el('div',{class:'row'},el('div',{class:'p num',text:fp(o.pct)}),el('div',{class:'c num',text:`Yes ${fmt(o.yes)} / ${fmt(o.tot)}`})),el('div',{class:'bar'},el('span',{style:`width:${o.pct||0}%`})));t.onclick=()=>{const S=F.area||(F.area=new Set());S.has(a)?S.delete(a):S.add(a);refreshFilterButtons();renderAll();};tb.append(t);});
   // trend
@@ -760,13 +772,15 @@ function renderAdmin(){
   const kv=(id,arr)=>{const b=$(id);b.innerHTML='';arr.forEach(([k,v])=>b.append(el('div',{text:k}),el('div',{text:v})));};
   kv('#curRedeem',[['ไฟล์ปัจจุบัน',rm.fileName||'-'],['อัปเดตเมื่อ',rm.uploadedAt||'-'],['จำนวนแถว',fmt(RAW.rows.length)],['ช่วงวันที่',ds.length?ds[0]+' – '+ds[ds.length-1]:'-']]);
   kv('#curMaster',[['ไฟล์ปัจจุบัน',mm.fileName||'-'],['อัปเดตเมื่อ',mm.uploadedAt||'-'],['MAN LIST',fmt(MAS.man?MAS.man.rows.length:0)+' แถว / '+fmt(MODEL.M.man.size)+' ID'],['SHOP LIST',fmt(MODEL.M.shops.size)+' สาขา']]);
-  const dataShops=new Map();MODEL.recs.forEach(r=>{let o=dataShops.get(r.shop);if(!o){o={yes:0,no:0,tot:0,area:r.area,name:r.shopName};dataShops.set(r.shop,o);}r.y?o.yes+=r.n:o.no+=r.n;o.tot+=r.n;});
-  const noSale=[...MODEL.M.shops.values()].filter(s=>!dataShops.has(s.code)&&!dataShops.has(s.tds));
+  const FR=filtered();const geoPass=(code,area)=>{const si=MODEL.shopInfo.get(code)||{};const lab=si.label,reg=MODEL.M.regionOf(area,code);return !(F.area&&F.area.size&&!F.area.has(area))&&!(F.region&&F.region.size&&!F.region.has(reg))&&!(F.shopLabel&&F.shopLabel.size&&!F.shopLabel.has(lab));};
+  const dataShops=new Map();FR.forEach(r=>{let o=dataShops.get(r.shop);if(!o){o={yes:0,no:0,tot:0,area:r.area,name:r.shopName};dataShops.set(r.shop,o);}r.y?o.yes+=r.n:o.no+=r.n;o.tot+=r.n;});
+  const noSale=[...MODEL.M.shops.values()].filter(s=>geoPass(s.code,s.area)&&!dataShops.has(s.code)&&!dataShops.has(s.tds)).map(s=>({...s,region:MODEL.M.regionOf(s.area,s.code)}));
   const notM=[...dataShops.entries()].filter(([c])=>!MODEL.M.shops.has(c)&&!MODEL.M.shopsTds.has(c)).map(([c,o])=>({key:o.name,code:c,area:o.area,...o,pct:pct(o.yes,o.tot)}));
-  const staffIds=new Map();MODEL.recs.forEach(r=>{let o=staffIds.get(r.staff);if(!o){o={yes:0,no:0,tot:0,shop:r.shopLabel,area:r.area};staffIds.set(r.staff,o);}r.y?o.yes+=r.n:o.no+=r.n;o.tot+=r.n;});
+  const staffIds=new Map();FR.forEach(r=>{let o=staffIds.get(r.staff);if(!o){o={yes:0,no:0,tot:0,shop:r.shopLabel,area:r.area};staffIds.set(r.staff,o);}r.y?o.yes+=r.n:o.no+=r.n;o.tot+=r.n;});
   const sNot=[...staffIds.entries()].filter(([id])=>!MODEL.M.man.has(id)).map(([id,o])=>({key:id,...o,pct:pct(o.yes,o.tot)}));
-  kpis('#kpiMatch',[['สาขาใน SHOP LIST',fmt(MODEL.M.shops.size)],['สาขาในข้อมูล Redeem',fmt(dataShops.size)],['Shop List ที่ไม่มียอด',fmt(noSale.length),'',noSale.length>0],['สาขาในข้อมูลที่ไม่อยู่ใน Shop List',fmt(notM.length)],['Staff ID ไม่พบใน MAN LIST',fmt(sNot.length)]]);
-  table('#t-shopNoSale',{id:'shopNoSale',title:'สาขาใน SHOP LIST ที่ยังไม่มียอด',limit:15,cols:[{k:'name',l:'Shop',t:'txt',w:260},{k:'code',l:'Shop Code',t:'txt'},{k:'area',l:'Area',t:'txt'},{k:'type',l:'Type',t:'txt'}],rows:noSale,sort:['area',1]});
+  const mShops=[...MODEL.M.shops.values()].filter(s=>geoPass(s.code,s.area)).length;
+  kpis('#kpiMatch',[['สาขาใน SHOP LIST',fmt(mShops),activeFilterText()?'ตามตัวกรอง':''],['สาขาในข้อมูล Redeem',fmt(dataShops.size)],['Shop List ที่ไม่มียอด',fmt(noSale.length),'',noSale.length>0],['สาขาในข้อมูลที่ไม่อยู่ใน Shop List',fmt(notM.length)],['Staff ID ไม่พบใน MAN LIST',fmt(sNot.length)]]);
+  table('#t-shopNoSale',{id:'shopNoSale',title:'สาขาใน SHOP LIST ที่ยังไม่มียอด',limit:15,cols:[{k:'name',l:'Shop',t:'txt',w:260},{k:'code',l:'Shop Code',t:'txt'},{k:'area',l:'Area',t:'txt'},{k:'region',l:'Region',t:'txt'},{k:'type',l:'Type',t:'txt'}],rows:noSale,sort:['area',1]});
   table('#t-shopNotMaster',{id:'shopNotMaster',title:'สาขาในข้อมูลที่ไม่อยู่ใน SHOP LIST',limit:15,cols:[{k:'key',l:'Shop',t:'txt',w:260},{k:'code',l:'Partner Code',t:'txt'},{k:'area',l:'Area',t:'txt'},{k:'tot',l:'Total',t:'num'},{k:'pct',l:'% Yes',t:'pct'}],rows:notM,sort:['tot',-1]});
   table('#t-staffNotMaster',{id:'staffNotMaster',title:'Sale Represent ID ที่ไม่พบใน MAN LIST',limit:15,cols:[{k:'key',l:'ID',t:'txt'},{k:'shop',l:'Shop (ล่าสุด)',t:'txt',w:260},{k:'area',l:'Area',t:'txt'},{k:'no',l:'Redeem-No',t:'num'},{k:'yes',l:'Redeem-Yes',t:'num'},{k:'tot',l:'Total',t:'num'},{k:'pct',l:'% Yes',t:'pct'}],rows:sNot,sort:['tot',-1]});
 }
