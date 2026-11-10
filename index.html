@@ -270,6 +270,7 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
     <div class="card" id="c-vendorBar"><div class="card-h"><h3>Redeem-Yes / No ราย VENDOR</h3></div><div class="card-b"><div class="legend" id="vendorBarLegend"></div><div class="chart-box"><canvas id="chVendorBar"></canvas></div></div></div>
   </div>
   <div id="t-vendor" style="margin-top:14px"></div>
+  <div id="t-flag"></div>
   <div class="section-title">4.2 PROMOTION</div>
   <div class="card" id="c-promoBar"><div class="card-h"><h3><span class="tag">4.2</span>Top 15 PROMOTION_DESC ตามยอด Registered</h3></div><div class="card-b"><div class="legend" id="promoLegend"></div><div class="chart-box tall"><canvas id="chPromo"></canvas></div></div></div>
   <div id="t-promo"></div>
@@ -332,6 +333,10 @@ const natCmp=(a,b)=>String(a).localeCompare(String(b),'en',{numeric:true});
 function toast(t,ms=3500){const x=$('#toast');x.textContent=t;x.classList.add('show');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('show'),ms);}
 const C={yes:'#e6007e',no:'#c9c3cf',cat:['#e8337f','#8b5cf6','#0891b2','#d97706','#16a34a','#94a3b8'],zero:'#ddd8e2',miss:'#3b82f6',sold:'#f59e0b'};
 const UNK='(ไม่ระบุ)';
+// Flag KPI: COMPANY 3 ตัวนี้ = No, ที่เหลือ = Yes
+const FLAG_KPI_NO=['TOL-Existing','TOL-Existing-VAS','TOL-New GA'];
+const FLAG_NO_SET=new Set(FLAG_KPI_NO.map(x=>x.toUpperCase()));
+const flagKpi=company=>FLAG_NO_SET.has(String(company||'').trim().toUpperCase())?'No':'Yes';
 
 /* ====================== auth ====================== */
 const PW={ADMIN5555:'admin',WW5555:'user'};
@@ -432,7 +437,7 @@ function rebuild(){
     const st=g(r,ix.st).toUpperCase();
     const cnt=ix.cnt>=0&&r[ix.cnt]!==''&&!isNaN(+r[ix.cnt])?+r[ix.cnt]:1;
     const shopName=(ms&&ms.name)||g(r,ix.sn)||g(r,ix.pn)||code||UNK;
-    const rec={i,d,m,y:st.includes('YES')?1:0,n:cnt,area,zone:zoneOf(area),region:M.regionOf(area,code),shop:code||UNK,shopName,vendor:g(r,ix.ve)||UNK,company:g(r,ix.co)||UNK,campaign:g(r,ix.ca)||UNK,promo:g(r,ix.pr)||UNK,platform:g(r,ix.pf)||UNK,staff:g(r,ix.sr)||UNK,inShopList:!!ms};
+    const rec={i,d,m,y:st.includes('YES')?1:0,n:cnt,area,zone:zoneOf(area),region:M.regionOf(area,code),shop:code||UNK,shopName,vendor:g(r,ix.ve)||UNK,company:g(r,ix.co)||UNK,flag:flagKpi(g(r,ix.co)),campaign:g(r,ix.ca)||UNK,promo:g(r,ix.pr)||UNK,platform:g(r,ix.pf)||UNK,staff:g(r,ix.sr)||UNK,inShopList:!!ms};
     recs.push(rec);
     if(code){const pa=partnerArea.get(code)||{};pa[area]=(pa[area]||0)+1;partnerArea.set(code,pa);const pr=partnerRegion.get(code)||{};pr[rec.region]=(pr[rec.region]||0)+1;partnerRegion.set(code,pr);if(!partnerName.has(code))partnerName.set(code,shopName);}
   });
@@ -450,7 +455,7 @@ function rebuild(){
 }
 
 /* ====================== filters ====================== */
-const DIMS=[['m','เดือน'],['d','วันที่'],['region','Region'],['area','Area'],['shopLabel','Shop'],['vendor','Vendor'],['company','Company'],['campaign','Campaign'],['platform','Platform']];
+const DIMS=[['flag','Flag KPI'],['m','เดือน'],['d','วันที่'],['region','Region'],['area','Area'],['shopLabel','Shop'],['vendor','Vendor'],['company','Company'],['campaign','Campaign'],['platform','Platform']];
 let F={};let defaultMonthSet=false;
 try{const sv=JSON.parse(sessionStorage.getItem('tvsF')||'null');if(sv){for(const k in sv)F[k]=new Set(sv[k]);defaultMonthSet=true;}}catch(e){}
 function passes(r,skip){for(const [k] of DIMS){if(k===skip)continue;const s=F[k];if(s&&s.size&&!s.has(r[k]))return false;}return true;}
@@ -714,15 +719,16 @@ function renderRaw(){
   const idxs=rawRows();const PS=50;const pages=Math.max(1,Math.ceil(idxs.length/PS));rawPage=Math.min(rawPage,pages-1);
   const st=TS.raw||(TS.raw={sort:null});
   if(st.sort){const [c,d]=st.sort;idxs.sort((a,b)=>natCmp(RAW.rows[a][c],RAW.rows[b][c])*d);}
-  $('#rawSub').textContent=`${fmt(idxs.length)} แถว · ${RAW.cols.length} คอลัมน์ (ตามตัวกรอง)`;
+  $('#rawSub').textContent=`${fmt(idxs.length)} แถว · ${RAW.cols.length+1} คอลัมน์ (รวม FLAG_KPI · ตามตัวกรอง)`;
   const t=el('table',{class:'t'});const tr=el('tr');
+  const fth=el('th',{text:'FLAG_KPI'});tr.append(fth);
   RAW.cols.forEach((c,ci)=>{const th=el('th',{class:st.sort&&st.sort[0]===ci?'sorted':''},c||('Col'+(ci+1)),st.sort&&st.sort[0]===ci?el('span',{class:'ar',text:st.sort[1]>0?'▲':'▼'}):null);th.onclick=()=>{st.sort=[ci,st.sort&&st.sort[0]===ci?-st.sort[1]:1];renderRaw();};tr.append(th);});
-  const tb=el('tbody');idxs.slice(rawPage*PS,rawPage*PS+PS).forEach(i=>{const r=el('tr');RAW.rows[i].forEach(v=>{const td=el('td');const s=el('span',{class:'trunc',text:v,title:v});s.style.maxWidth='220px';td.append(s);td.onclick=()=>td.classList.toggle('open');r.append(td);});tb.append(r);});
+  const tb=el('tbody');idxs.slice(rawPage*PS,rawPage*PS+PS).forEach(i=>{const r=el('tr');const fl=MODEL.recs[i].flag;r.append(el('td',{},el('span',{class:'badge '+(fl==='Yes'?'b-yes':'b-zero'),text:fl})));RAW.rows[i].forEach(v=>{const td=el('td');const s=el('span',{class:'trunc',text:v,title:v});s.style.maxWidth='220px';td.append(s);td.onclick=()=>td.classList.toggle('open');r.append(td);});tb.append(r);});
   t.append(el('thead',{},tr),tb);const w=$('#rawWrap');w.innerHTML='';w.append(t);
   const f=$('#rawFoot');f.innerHTML='';const prev=el('button',{class:'btn sm',type:'button',text:'‹ ก่อนหน้า'}),next=el('button',{class:'btn sm',type:'button',text:'ถัดไป ›'});prev.disabled=rawPage===0;next.disabled=rawPage>=pages-1;prev.onclick=()=>{rawPage--;renderRaw();};next.onclick=()=>{rawPage++;renderRaw();};
   f.append(prev,el('span',{text:`หน้า ${rawPage+1} / ${pages}`}),next,el('span',{text:'คลิกหัวคอลัมน์เพื่อเรียง · คลิกช่องเพื่อดูข้อความเต็ม'}));
 }
-$('#rawExport').onclick=()=>{const idxs=rawRows();if(!idxs.length){toast('ไม่มีข้อมูลให้ Export');return;}const aoa=[RAW.cols,...idxs.map(i=>RAW.rows[i])];saveXlsx('TVS_Redeem_RawData_'+new Date().toISOString().slice(0,10),aoa);};
+$('#rawExport').onclick=()=>{const idxs=rawRows();if(!idxs.length){toast('ไม่มีข้อมูลให้ Export');return;}const aoa=[['FLAG_KPI',...RAW.cols],...idxs.map(i=>[MODEL.recs[i].flag,...RAW.rows[i]])];saveXlsx('TVS_Redeem_RawData_'+new Date().toISOString().slice(0,10),aoa);};
 function execStaff(L,did,sold,none,miss,cov){
   const u=$('#execStaff');u.innerHTML='';if(!L.length){u.append(li('ไม่มีข้อมูล Staff ตามตัวกรอง'));return;}
   u.append(li(`Staff ในฐาน <b>${fmt(L.length)}</b> คน · ทำ Redeem แล้ว <b class="hl">${fmt(did.length)}</b> (${fp(pct(did.length,L.length))}) · ขายแต่ยังไม่ Redeem <b>${fmt(sold.length)}</b> · ไม่มียอดขาย <b>${fmt(none.length)}</b>`));
@@ -746,6 +752,7 @@ function renderCamp(){
   const share=rows=>rows.map(o=>({...o,share:pct(o.tot,T.tot)}));
   const colsS=k=>[...STD_COLS(k),{k:'share',l:'สัดส่วนยอด',t:'pct'}];
   const tot={key:'รวม',...T,share:100};
+  table('#t-flag',{id:'flag',title:'สรุป BY Flag KPI',sub:'No = '+FLAG_KPI_NO.join(', ')+' · Yes = COMPANY อื่นทั้งหมด',cols:colsS('Flag KPI'),rows:share([...agg(R,r=>r.flag).values()]),total:tot,sort:['key',-1]});
   table('#t-vendor',{id:'vendor',title:'สรุปสัดส่วน VENDOR',tag:'4.1',cols:colsS('VENDOR'),rows:share(vm),total:tot,sort:['tot',-1]});
   const ps=[...pm].sort((a,b)=>b.tot-a.tot).slice(0,15);
   legend('promoLegend',[[C.yes,'Redeem-Yes'],[C.no,'Redeem-No']]);
@@ -753,7 +760,7 @@ function renderCamp(){
   const promoVendor=new Map();R.forEach(r=>{if(!promoVendor.has(r.promo))promoVendor.set(r.promo,r.vendor);});
   table('#t-promo',{id:'promo',title:'สรุป PROMOTION_DESC',tag:'4.2',limit:15,cols:[{k:'key',l:'PROMOTION_DESC',t:'txt',w:360},{k:'vendor',l:'VENDOR',t:'txt'},...colsS('').slice(1)],rows:share(pm).map(o=>({...o,vendor:promoVendor.get(o.key)})),total:{...tot,vendor:''},sort:['tot',-1]});
   table('#t-campaign',{id:'campaign',title:'สรุป CAMPAIGN',limit:15,cols:colsS('CAMPAIGN'),rows:share([...agg(R,r=>r.campaign).values()]),total:tot,sort:['tot',-1]});
-  table('#t-company',{id:'company',title:'สรุป COMPANY (Product)',limit:15,cols:colsS('COMPANY'),rows:share([...agg(R,r=>r.company).values()]),total:tot,sort:['tot',-1]});
+  table('#t-company',{id:'company',title:'สรุป COMPANY (Product)',limit:15,cols:[...colsS('COMPANY'),{k:'flag',l:'Flag KPI',t:'badge',badge:v=>v==='Yes'?'b-yes':'b-zero'}],rows:share([...agg(R,r=>r.company).values()]).map(o=>({...o,flag:flagKpi(o.key)})),total:tot,sort:['tot',-1]});
   const u=$('#execCamp');u.innerHTML='';if(!T.tot){u.append(li('ไม่มีข้อมูลตามตัวกรอง'));return;}
   const v0=vs[0];u.append(li(`VENDOR หลักคือ <b>${esc(v0.key)}</b> สัดส่วน <b>${fp(pct(v0.tot,T.tot))}</b> ของยอด มี % Yes <b class="hl">${fp(v0.pct)}</b> (ภาพรวม ${fp(T.pct)})`));
   const vv=vs.filter(o=>o.tot>=20).sort((a,b)=>b.pct-a.pct);if(vv.length>=2)u.append(li(`VENDOR ที่ % Yes สูงสุด <b>${esc(vv[0].key)}</b> ${fp(vv[0].pct)} · ต่ำสุด <b>${esc(vv[vv.length-1].key)}</b> ${fp(vv[vv.length-1].pct)}`,'a'));
