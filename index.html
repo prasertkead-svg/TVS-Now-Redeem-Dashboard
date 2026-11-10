@@ -289,6 +289,17 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
       <div id="actMaster" class="hide" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="pubMaster">บันทึก & เผยแพร่ให้ทุกคน</button><button class="btn" id="locMaster">ดูเฉพาะเครื่องนี้ (ไม่บันทึก)</button></div>
     </div></div>
   </div>
+  <div class="card" id="c-gh" style="margin-top:14px"><div class="card-h"><h3><span class="tag">GIT</span>เชื่อมต่อ GitHub (สำหรับ Admin)</h3><span class="sub">ปุ่ม "บันทึก & เผยแพร่" จะ Commit ข้อมูลขึ้น GitHub แล้ว Dashboard อัปเดตให้ทุกคนอัตโนมัติ (~1–2 นาที)</span></div><div class="card-b">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+      <label class="note">Owner<input class="search" id="ghOwner" style="width:100%;margin-top:4px"></label>
+      <label class="note">Repository<input class="search" id="ghRepo" style="width:100%;margin-top:4px"></label>
+      <label class="note">Branch<input class="search" id="ghBranch" style="width:100%;margin-top:4px"></label>
+      <label class="note">GitHub Token (Fine-grained · Contents: Read and write)<input class="search" id="ghToken" type="password" style="width:100%;margin-top:4px" placeholder="github_pat_..."></label>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary sm" id="ghSave">บันทึกการตั้งค่า</button><button class="btn sm" id="ghTest">ทดสอบการเชื่อมต่อ</button><button class="btn sm" id="ghClear">ลบ Token ออกจากเครื่องนี้</button></div>
+    <div class="msg" id="msgGh"></div>
+    <p class="note">Token เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น · หรืออัปเดตโดยวางไฟล์ Excel ใน GitHub โฟลเดอร์ <b>input/redeem/</b> หรือ <b>input/master/</b> (ชื่อไฟล์อะไรก็ได้) ระบบจะแปลงและอัปเดตให้อัตโนมัติ</p>
+  </div></div>
   <div class="section-title">SHOP LIST vs ข้อมูล REDEEM</div>
   <div class="grid g-kpi" id="kpiMatch"></div>
   <div class="grid g-2" style="margin-top:14px">
@@ -331,7 +342,9 @@ let RAW={cols:[],rows:[]};  // decoded redeem rows (arrays)
 let MODEL=null;
 function decodeRedeem(j){const n=j.n,cols=j.cols,rows=new Array(n);for(let i=0;i<n;i++){const r=new Array(cols.length);for(let c=0;c<cols.length;c++)r[c]=j.dict[c][j.idx[c][i]];rows[i]=r;}return {cols,rows};}
 function encodeRedeem(cols,rows,meta){const dict=[],idx=[];for(let c=0;c<cols.length;c++){const m=new Map(),vals=[],ix=new Array(rows.length);for(let i=0;i<rows.length;i++){const v=rows[i][c]??'';let k=m.get(v);if(k===undefined){k=vals.length;m.set(v,k);vals.push(v);}ix[i]=k;}dict.push(vals);idx.push(ix);}return {cols,dict,idx,n:rows.length,meta};}
-async function loadJSON(p){const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw new Error(p+' '+r.status);return r.json();}
+const IS_CLAUDE=!!(window.claude&&typeof claude.use==='function');
+const GH_MODE=!IS_CLAUDE;
+async function loadJSON(p){const r=await fetch(GH_MODE?p+'?v='+Date.now():p,{cache:'no-store'});if(!r.ok)throw new Error(p+' '+r.status);return r.json();}
 let booted=false;
 async function boot(){
   if(booted)return;booted=true;
@@ -339,9 +352,24 @@ async function boot(){
   try{
     const [a,b]=await Promise.all([loadJSON('data/redeem.json'),loadJSON('data/master.json')]);
     RED=a;MAS=b;RAW=decodeRedeem(RED);
+    try{VER=await loadJSON('data/version.json');}catch(e){VER=null;}
   }catch(e){$('#loadingTxt').textContent='โหลดข้อมูลไม่สำเร็จ: '+e.message;return;}
   $('#loading').classList.add('hide');$('#app').classList.remove('hide');
   rebuild();go(VIEW);
+  if(GH_MODE)setInterval(pollVersion,60000);
+  document.addEventListener('visibilitychange',()=>{if(GH_MODE&&!document.hidden)pollVersion();});
+}
+let VER=null,polling=false;
+async function pollVersion(){
+  if(polling||document.hidden)return;polling=true;
+  try{const v=await loadJSON('data/version.json');
+    if(VER&&v&&(v.redeem!==VER.redeem||v.master!==VER.master)){
+      if(v.redeem!==VER.redeem){RED=await loadJSON('data/redeem.json');RAW=decodeRedeem(RED);}
+      if(v.master!==VER.master){MAS=await loadJSON('data/master.json');}
+      rebuild();toast('🔄 ข้อมูลอัปเดตล่าสุดแล้ว: '+((RED.meta&&RED.meta.uploadedAt)||''));
+    }
+    if(v)VER=v;
+  }catch(e){}finally{polling=false;}
 }
 
 /* ====================== model ====================== */
@@ -718,6 +746,7 @@ function renderCamp(){
 
 /* ====================== admin ====================== */
 function renderAdmin(){
+  $('#c-gh').classList.toggle('hide',!GH_MODE);if(GH_MODE&&!$('#ghOwner').value)ghFill();
   const rm=RED.meta||{},mm=MAS.meta||{};
   const ds=[...new Set(MODEL.recs.map(r=>r.d))].sort();
   const kv=(id,arr)=>{const b=$(id);b.innerHTML='';arr.forEach(([k,v])=>b.append(el('div',{text:k}),el('div',{text:v})));};
@@ -745,8 +774,8 @@ function setupDrop(drop,input,handler){const d=$(drop),i=$(input);d.onclick=()=>
 setupDrop('#dropRedeem','#fileRedeem',async f=>{
   msg('#msgRedeem','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actRedeem').classList.add('hide');
   try{const wb=await readWorkbook(f);let found=null;
-    for(const n of wb.SheetNames){const aoa=sheetAoa(wb.Sheets[n]);const h=findHeader(aoa,['STATUS_REDEEM']);if(h>=0){found={n,aoa,h};break;}}
-    if(!found)throw new Error('ไม่พบ Sheet ที่มีคอลัมน์ STATUS_REDEEM');
+    for(const n of wb.SheetNames){const aoa=sheetAoa(wb.Sheets[n]);const h=findHeader(aoa,['STATUS_REDEEM','PARTNER_CODE']);if(h>=0){found={n,aoa,h};break;}}
+    if(!found)throw new Error('ไม่พบ Sheet ที่มีคอลัมน์ STATUS_REDEEM และ PARTNER_CODE');
     const t=trimTbl(found.aoa[found.h],found.aoa.slice(found.h+1));
     const need=[['TM_KEY_DATE'],['PARTNER_CODE'],['SALE_REPRESENT']];const miss=need.filter(c=>colIdx(t.cols,c)<0).map(c=>c[0]);
     if(miss.length)throw new Error('ไม่พบคอลัมน์: '+miss.join(', '));
@@ -769,9 +798,39 @@ setupDrop('#dropMaster','#fileMaster',async f=>{
 });
 function applyRedeem(){const p=pending.redeem;RED=encodeRedeem(p.cols,p.rows,p.meta);RAW={cols:p.cols,rows:p.rows};}
 function applyMaster(){MAS=pending.master;}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+function ghCfg(){let c={};try{c=JSON.parse(lsGet('tvsGh')||'{}');}catch(e){}
+  let o='prasertkead-svg',r='tvs-now-redeem-dashboard';
+  if(location.hostname.endsWith('.github.io')){o=location.hostname.split('.')[0];const seg=location.pathname.split('/').filter(Boolean)[0];if(seg&&!seg.includes('.'))r=seg;}
+  return {owner:c.owner||o,repo:c.repo||r,branch:c.branch||'main',token:c.token||''};}
+function ghFill(){const c=ghCfg();$('#ghOwner').value=c.owner;$('#ghRepo').value=c.repo;$('#ghBranch').value=c.branch;$('#ghToken').value=c.token;}
+$('#ghSave').onclick=()=>{lsSet('tvsGh',JSON.stringify({owner:$('#ghOwner').value.trim(),repo:$('#ghRepo').value.trim(),branch:$('#ghBranch').value.trim()||'main',token:$('#ghToken').value.trim()}));msg('#msgGh','ok','บันทึกการตั้งค่าแล้ว (เฉพาะเครื่องนี้)');};
+$('#ghClear').onclick=()=>{const c=ghCfg();c.token='';lsSet('tvsGh',JSON.stringify(c));$('#ghToken').value='';msg('#msgGh','in','ลบ Token แล้ว');};
+$('#ghTest').onclick=async()=>{$('#ghSave').click();try{const c=ghCfg();const r=await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}`,{headers:ghHead(c)});const j=await r.json();if(!r.ok)throw new Error(j.message||r.status);msg('#msgGh',j.permissions&&j.permissions.push?'ok':'er',j.permissions&&j.permissions.push?`✓ เชื่อมต่อ ${esc(j.full_name)} ได้ และมีสิทธิ์เขียน`:`เชื่อมต่อได้ แต่ Token ไม่มีสิทธิ์เขียน (ต้องการ Contents: Read and write)`);}catch(e){msg('#msgGh','er','เชื่อมต่อไม่สำเร็จ: '+esc(e.message));}};
+function ghHead(c){const h={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};if(c.token)h.Authorization='Bearer '+c.token;return h;}
+function b64utf8(str){const b=new TextEncoder().encode(str);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s);}
+async function ghPut(c,path,content,message){
+  const url=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${path}`;
+  let sha;const g=await fetch(url+'?ref='+encodeURIComponent(c.branch)+'&t='+Date.now(),{headers:ghHead(c)});if(g.ok){sha=(await g.json()).sha;}else if(g.status!==404){throw new Error('อ่าน '+path+' ไม่ได้ ('+g.status+')');}
+  const r=await fetch(url,{method:'PUT',headers:{...ghHead(c),'Content-Type':'application/json'},body:JSON.stringify({message,content:b64utf8(content),branch:c.branch,sha})});
+  if(!r.ok){let m=r.status;try{m=(await r.json()).message||m;}catch(e){}throw new Error(path+': '+m);}
+}
+function verStr(j,str){const m=j.meta||{};return `${m.fileName||''}|${m.uploadedAt||''}|${new TextEncoder().encode(str).length}`;}
+async function publishGitHub(which,mid){
+  const c=ghCfg();if(!c.token)throw new Error('ยังไม่ได้ใส่ GitHub Token (ดูการ์ด "เชื่อมต่อ GitHub" ด้านล่าง)');
+  if(which==='redeem')applyRedeem();else applyMaster();
+  const obj=which==='redeem'?RED:MAS;const str=JSON.stringify(obj);
+  msg(mid,'in','กำลังอัปโหลดขึ้น GitHub... ('+fmt(str.length/1024)+' KB)');
+  await ghPut(c,`data/${which}.json`,str,`Update ${which} data: ${(obj.meta&&obj.meta.fileName)||''} (Admin dashboard)`);
+  const v={...(VER||{})};v[which]=verStr(obj,str);
+  await ghPut(c,'data/version.json',JSON.stringify(v),'Update data version');
+  VER=v;
+}
 let ART=null;
 async function publishData(which){
   const btn=$(which==='redeem'?'#pubRedeem':'#pubMaster');const mid=which==='redeem'?'#msgRedeem':'#msgMaster';btn.disabled=true;
+  if(GH_MODE){try{await publishGitHub(which,mid);rebuild();msg(mid,'ok','✓ Commit ขึ้น GitHub แล้ว — ผู้ใช้ทุกคนจะเห็นข้อมูลใหม่อัตโนมัติภายใน ~1–2 นาที (หลัง GitHub Pages deploy เสร็จ)');toast('อัปเดตข้อมูลขึ้น GitHub สำเร็จ');$(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');}catch(e){rebuild();msg(mid,'er','บันทึกขึ้น GitHub ไม่สำเร็จ: '+esc(e.message)+' — ข้อมูลใหม่แสดงเฉพาะเครื่องนี้ชั่วคราว');}finally{btn.disabled=false;}return;}
   try{
     if(!ART)ART=await claude.use('artifact');
     if(!ART)throw {code:'unavailable'};
@@ -797,7 +856,7 @@ $('#tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)r
 function go(v){if(v==='admin'&&ROLE!=='admin')v='dash';VIEW=v;$$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.v===v));$$('.view').forEach(x=>x.classList.toggle('active',x.id==='v-'+v));try{history.replaceState(null,'','#'+v);}catch(e){}renderView();}
 function renderView(){if(!MODEL)return;if(VIEW==='dash')renderDash();else if(VIEW==='staff')renderStaff();else if(VIEW==='camp')renderCamp();else if(VIEW==='admin')renderAdmin();}
 function renderAll(){renderView();}
-function renderDataInfo(){const rm=RED.meta||{},mm=MAS.meta||{};const ds=[...new Set(MODEL.recs.map(r=>r.d))].filter(Boolean).sort();$('#dataInfo').innerHTML=`ข้อมูล Redeem: <b>${esc(rm.fileName||'-')}</b> · ${fmt(RAW.rows.length)} แถว · ${ds[0]||''} – ${ds[ds.length-1]||''} · อัปเดต ${esc(rm.uploadedAt||'-')} &nbsp;|&nbsp; Master: <b>${esc(mm.fileName||'-')}</b> · อัปเดต ${esc(mm.uploadedAt||'-')}`;}
+function renderDataInfo(){const rm=RED.meta||{},mm=MAS.meta||{};const ds=[...new Set(MODEL.recs.map(r=>r.d))].filter(Boolean).sort();$('#dataInfo').innerHTML=`ข้อมูล Redeem: <b>${esc(rm.fileName||'-')}</b> · ${fmt(RAW.rows.length)} แถว · ${ds[0]||''} – ${ds[ds.length-1]||''} · อัปเดต ${esc(rm.uploadedAt||'-')} &nbsp;|&nbsp; Master: <b>${esc(mm.fileName||'-')}</b> · อัปเดต ${esc(mm.uploadedAt||'-')}`+(GH_MODE?' &nbsp;|&nbsp; <b style="color:var(--pink)">● LIVE</b> เช็คข้อมูลใหม่อัตโนมัติทุก 1 นาที':'');}
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(['dash','staff','camp','admin'].includes(h)&&h!==VIEW)go(h);});
 (function init(){const h=location.hash.slice(1);if(['dash','staff','camp','admin'].includes(h))VIEW=h;const r=ssGet('tvsRole');if(r==='admin'||r==='user'){enter(r);go(VIEW);}})();
 </script>

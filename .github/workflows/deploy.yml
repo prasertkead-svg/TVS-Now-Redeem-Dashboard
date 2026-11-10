@@ -1,0 +1,76 @@
+name: Update data & deploy dashboard
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install openpyxl
+        run: pip install openpyxl
+
+      - name: Convert newest Excel in input/ (ไม่ยึดชื่อไฟล์)
+        run: |
+          newest () {  # ไฟล์ล่าสุดตามเวลา commit
+            best=""; bt=0
+            for f in "$1"/*.xlsx "$1"/*.xlsm "$1"/*.csv; do
+              [ -f "$f" ] || continue
+              t=$(git log -1 --format=%ct -- "$f"); t=${t:-0}
+              if [ "$t" -ge "$bt" ]; then bt=$t; best="$f"; fi
+            done
+            echo "$best"
+          }
+          changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" 2>/dev/null || echo "input/")
+          ARGS=""
+          R=$(newest input/redeem); M=$(newest input/master)
+          if [ -n "$R" ] && { echo "$changed" | grep -q '^input/redeem/' || [ "${{ github.event_name }}" = "workflow_dispatch" ]; }; then ARGS="$ARGS --redeem $R"; fi
+          if [ -n "$M" ] && { echo "$changed" | grep -q '^input/master/' || [ "${{ github.event_name }}" = "workflow_dispatch" ]; }; then ARGS="$ARGS --master $M"; fi
+          python scripts/convert.py $ARGS --out data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if ! git diff --cached --quiet; then
+            git commit -m "Update dashboard data from input files [skip ci]"
+            git push
+          fi
+
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -r data _site/
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
