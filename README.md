@@ -1,6 +1,6 @@
 # TVS Now Redeem Dashboard — Shop by WW
 
-Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) · ธีมชมพู–ขาว · Region: BMA / UPC I / UPC II (อ้างอิง MAN LIST)
+Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) · ธีมชมพู–ขาว · Region: BMA / UPC I / UPC II (อ้างอิงคอลัมน์ REGION ใน SHOP LIST)
 
 - รหัส Admin: `ADMIN5555` · รหัส User: `WW5555` (เป็นการกั้นหน้าจอเท่านั้น ไม่ใช่การเข้ารหัสข้อมูล)
 - เปิดผ่าน GitHub Pages: `https://prasertkead-svg.github.io/tvs-now-redeem-dashboard/`
@@ -10,12 +10,12 @@ Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) ·
 2. ไปที่ **Actions** → `Update data & deploy dashboard` → **Run workflow** (หรือ push อะไรก็ได้) รอ ~1 นาที
 
 ## อัปเดตข้อมูล — Dashboard อัปเดตเองอัตโนมัติ
-หน้าเว็บเช็คข้อมูลใหม่ทุก 1 นาที (และทุกครั้งที่กลับมาที่แท็บ) — ไม่ต้องรีเฟรชเอง
+หน้าเว็บเช็คข้อมูลใหม่ทุก 15 วินาที (และทุกครั้งที่กลับมาที่แท็บ / กดปุ่ม 🔄) — ข้อมูลเปลี่ยนเองโดยไม่ต้องรีเฟรช
 
 **วิธี A — อัปโหลด Excel ผ่าน GitHub (ไม่ต้องมี Token)**
-1. เปิดโฟลเดอร์ `input/redeem/` (ไฟล์ TVS NOW REDEEM) หรือ `input/master/` (ไฟล์ MAN&SHOPLIST)
-2. **Add file → Upload files** → ลากไฟล์ Excel (ชื่ออะไรก็ได้) → Commit
-3. GitHub Actions แปลงไฟล์ล่าสุดเป็น `data/*.json` แล้ว deploy ให้เอง (~1–2 นาที)
+1. **Add file → Upload files** → ลากไฟล์ Excel (ชื่อไฟล์/โฟลเดอร์อะไรก็ได้ แนะนำ `input/`) → Commit
+2. ระบบดูหัวคอลัมน์เองว่าเป็นไฟล์ Redeem (STATUS_REDEEM + PARTNER_CODE) หรือ MAN&SHOPLIST (EMP_ID / SHOP CODE)
+3. GitHub Actions แปลงเป็น `data/*.json` แล้ว deploy (~1 นาที) → หน้าจอทุกคนอัปเดตเอง
 
 **วิธี B — อัปโหลดผ่านหน้า Admin ของ Dashboard**
 1. Login ด้วย `ADMIN5555` → แท็บ ⚙ Admin → การ์ด **เชื่อมต่อ GitHub** ใส่ Fine-grained Token
@@ -28,7 +28,8 @@ Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) ·
 | `index.html` | Dashboard (Login, Dashboard, By Staff, By Campaign, Admin) |
 | `data/redeem.json`, `data/master.json` | ข้อมูลที่หน้าเว็บอ่าน |
 | `data/version.json` | ตัวบอกเวอร์ชันข้อมูล ใช้ตรวจว่ามีข้อมูลใหม่ |
-| `input/redeem/`, `input/master/` | วางไฟล์ Excel ใหม่ที่นี่ (ระบบใช้ไฟล์ที่ commit ล่าสุด) |
+| `input/` | ที่เก็บไฟล์ Excel ต้นฉบับ (อัปโหลดที่อื่นก็ได้) |
+| `scripts/auto_update.py` | หาไฟล์ Excel ที่อัปโหลด แยกประเภทจากหัวคอลัมน์ แล้วแปลง |
 | `scripts/convert.py` | แปลง Excel → JSON (หา Sheet ให้อัตโนมัติ ไม่ยึดชื่อไฟล์) |
 | `.github/workflows/deploy.yml` | แปลงข้อมูล + deploy GitHub Pages อัตโนมัติ |
 

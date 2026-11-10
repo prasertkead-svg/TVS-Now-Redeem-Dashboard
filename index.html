@@ -298,7 +298,7 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary sm" id="ghSave">บันทึกการตั้งค่า</button><button class="btn sm" id="ghTest">ทดสอบการเชื่อมต่อ</button><button class="btn sm" id="ghClear">ลบ Token ออกจากเครื่องนี้</button></div>
     <div class="msg" id="msgGh"></div>
-    <p class="note">Token เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น · หรืออัปเดตโดยวางไฟล์ Excel ใน GitHub โฟลเดอร์ <b>input/redeem/</b> หรือ <b>input/master/</b> (ชื่อไฟล์อะไรก็ได้) ระบบจะแปลงและอัปเดตให้อัตโนมัติ</p>
+    <p class="note">Token เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น · หรืออัปโหลดไฟล์ Excel ขึ้น GitHub ได้เลย (ชื่อไฟล์/โฟลเดอร์อะไรก็ได้) ระบบดูจากหัวคอลัมน์ว่าเป็นไฟล์ Redeem หรือ MAN&SHOPLIST แล้วอัปเดตให้อัตโนมัติ</p>
   </div></div>
   <div class="section-title">SHOP LIST vs ข้อมูล REDEEM</div>
   <div class="grid g-kpi" id="kpiMatch"></div>
@@ -356,19 +356,22 @@ async function boot(){
   }catch(e){$('#loadingTxt').textContent='โหลดข้อมูลไม่สำเร็จ: '+e.message;return;}
   $('#loading').classList.add('hide');$('#app').classList.remove('hide');
   rebuild();go(VIEW);
-  if(GH_MODE)setInterval(pollVersion,60000);
+  if(GH_MODE){setInterval(pollVersion,15000);const rb=el('button',{class:'btn sm',type:'button',text:'🔄 รีเฟรชข้อมูล'});rb.onclick=async()=>{rb.disabled=true;await pollVersion(true);rb.disabled=false;};$('#btnReset').before(rb);}
   document.addEventListener('visibilitychange',()=>{if(GH_MODE&&!document.hidden)pollVersion();});
 }
 let VER=null,polling=false;
-async function pollVersion(){
-  if(polling||document.hidden)return;polling=true;
+let lastCheck='';
+async function pollVersion(manual){
+  if(polling||(document.hidden&&!manual))return;polling=true;
   try{const v=await loadJSON('data/version.json');
     if(VER&&v&&(v.redeem!==VER.redeem||v.master!==VER.master)){
       if(v.redeem!==VER.redeem){RED=await loadJSON('data/redeem.json');RAW=decodeRedeem(RED);}
       if(v.master!==VER.master){MAS=await loadJSON('data/master.json');}
       rebuild();toast('🔄 ข้อมูลอัปเดตล่าสุดแล้ว: '+((RED.meta&&RED.meta.uploadedAt)||''));
     }
+    else if(manual)toast('ข้อมูลเป็นเวอร์ชันล่าสุดแล้ว');
     if(v)VER=v;
+    lastCheck=new Date().toLocaleTimeString('th-TH');const lc=$('#lastCheck');if(lc)lc.textContent=lastCheck;
   }catch(e){}finally{polling=false;}
 }
 
@@ -396,13 +399,18 @@ function buildMaster(){
     for(const r of MAS.man.rows){const id=String(r[iI]||'').trim();if(!id||man.has(id))continue;man.set(id,{id,name:r[iN]||'',type:r[iT]||'',shopCode:String(r[iSC]||'').trim(),shopName:r[iSN]||'',region:r[iR]||'',shopType:r[iST]||'',company:r[iCo]||''});}}
     // Region (BMA / UPC I / UPC II) ตั้งต้นจาก MAN LIST: แถว RRH ที่ SHOP_CODE = Regional Management <Area>
   const areaReg=new Map();
-  const regLabel=t=>{t=String(t||'').toUpperCase().replace(/\s+/g,' ');if(/UPC ?(2|II)\b/.test(t))return 'UPC II';if(/UPC ?(1|I)\b/.test(t))return 'UPC I';if(/BMA/.test(t))return 'BMA';return null;};
+  const regLabel=t=>{if(['BMA','UPC I','UPC II'].includes(String(t||'').trim()))return String(t).trim();t=String(t||'').toUpperCase().replace(/\s+/g,' ');if(/UPC ?(2|II)\b/.test(t))return 'UPC II';if(/UPC ?(1|I)\b/.test(t))return 'UPC I';if(/BMA/.test(t))return 'BMA';return null;};
   if(MAS&&MAS.man){const c=MAS.man.cols,iT=colIdx(c,['EMP_TYPE']),iSC=colIdx(c,['SHOP_CODE']),iR=colIdx(c,['REGION']);
     for(const r of MAS.man.rows){const sc=String(r[iSC]||'');if(!/^Regional\s+Management/i.test(sc))continue;const ar=normArea(sc);
       const lb=regLabel(r[iR])&&['BMA','UPC I','UPC II'].includes(String(r[iR]).trim())?String(r[iR]).trim():(/RRH/i.test(r[iT]||'')?regLabel(r[iT]):null);
       if(lb&&!areaReg.has(ar))areaReg.set(ar,lb);}}
-  for(const sh of shops.values()){if(sh.area&&!areaReg.has(sh.area)){const lb=regLabel(sh.region);if(lb)areaReg.set(sh.area,lb);}}
-  const regionOf=area=>areaReg.get(area)||(zoneOf(area)==='BMA'?'BMA':UNK);
+  const rrh=new Map(areaReg);areaReg.clear();
+  // ลำดับความสำคัญ: 1) REGION ของสาขาใน SHOP LIST  2) REGION ส่วนใหญ่ของ Area ใน SHOP LIST  3) RRH ใน MAN LIST
+  const shopReg=new Map(),areaCnt=new Map();
+  for(const sh of shops.values()){const lb=regLabel(sh.region);if(!lb)continue;shopReg.set(sh.code,lb);if(sh.tds)shopReg.set(sh.tds,lb);if(sh.area){const o=areaCnt.get(sh.area)||{};o[lb]=(o[lb]||0)+1;areaCnt.set(sh.area,o);}}
+  for(const [ar,o] of areaCnt){let b=null,bv=-1;for(const k in o)if(o[k]>bv){b=k;bv=o[k];}areaReg.set(ar,b);}
+  for(const [ar,lb] of rrh)if(!areaReg.has(ar))areaReg.set(ar,lb);
+  const regionOf=(area,code)=>(code&&shopReg.get(code))||areaReg.get(area)||(zoneOf(area)==='BMA'?'BMA':UNK);
   return {shops,shopsTds,man,areaReg,regionOf};
 }
 function rebuild(){
@@ -418,7 +426,7 @@ function rebuild(){
     const st=g(r,ix.st).toUpperCase();
     const cnt=ix.cnt>=0&&r[ix.cnt]!==''&&!isNaN(+r[ix.cnt])?+r[ix.cnt]:1;
     const shopName=(ms&&ms.name)||g(r,ix.sn)||g(r,ix.pn)||code||UNK;
-    const rec={i,d,m,y:st.includes('YES')?1:0,n:cnt,area,zone:zoneOf(area),region:M.regionOf(area),regSrc:M.areaReg.has(area)?'Master':'Redeem',shop:code||UNK,shopName,vendor:g(r,ix.ve)||UNK,company:g(r,ix.co)||UNK,campaign:g(r,ix.ca)||UNK,promo:g(r,ix.pr)||UNK,platform:g(r,ix.pf)||UNK,staff:g(r,ix.sr)||UNK,inShopList:!!ms};
+    const rec={i,d,m,y:st.includes('YES')?1:0,n:cnt,area,zone:zoneOf(area),region:M.regionOf(area,code),shop:code||UNK,shopName,vendor:g(r,ix.ve)||UNK,company:g(r,ix.co)||UNK,campaign:g(r,ix.ca)||UNK,promo:g(r,ix.pr)||UNK,platform:g(r,ix.pf)||UNK,staff:g(r,ix.sr)||UNK,inShopList:!!ms};
     recs.push(rec);
     if(code){const pa=partnerArea.get(code)||{};pa[area]=(pa[area]||0)+1;partnerArea.set(code,pa);const pr=partnerRegion.get(code)||{};pr[rec.region]=(pr[rec.region]||0)+1;partnerRegion.set(code,pr);if(!partnerName.has(code))partnerName.set(code,shopName);}
   });
@@ -426,7 +434,7 @@ function rebuild(){
   const shopInfo=new Map(); // code -> {name, area, region}
   for(const [code,o] of partnerArea)shopInfo.set(code,{name:partnerName.get(code),area:dom(o)||UNK,region:dom(partnerRegion.get(code))||UNK});
   for(const [code,s] of M.shops){const x=shopInfo.get(code);if(x){if(s.area)x.area=s.area;x.name=s.name;}else shopInfo.set(code,{name:s.name,area:s.area||UNK,noData:true});}
-  for(const x of shopInfo.values())x.region=M.regionOf(x.area);
+  for(const [c,x] of shopInfo)x.region=M.regionOf(x.area,c);
   // shop label uniqueness
   const nameCount={};for(const [c,s] of shopInfo)nameCount[s.name]=(nameCount[s.name]||0)+1;
   for(const [c,s] of shopInfo)s.label=nameCount[s.name]>1?s.name+' ['+c+']':s.name;
@@ -591,7 +599,7 @@ function renderDash(){
   vendorDonut('chVendor','vendorLegend',R);
   // tables
   const regRows=[...agg(R,r=>r.region).values()];
-  table('#t-region',{id:'region',title:'สรุป BY Region',tag:'1.3',sub:'BMA / UPC I / UPC II อ้างอิงจาก MAN LIST',note:(()=>{const n=R.filter(r=>r.region===UNK).reduce((a,r)=>a+r.n,0);return n?`* ${fmt(n)} รายการ ไม่ระบุ Area จึงจัด Region ไม่ได้`:'';})(),cols:(()=>{const c=STD_COLS('Region');c[0].regSort=true;return c;})(),rows:regRows,total:{key:'รวม',...T},sort:['key',1]});
+  table('#t-region',{id:'region',title:'สรุป BY Region',tag:'1.3',sub:'BMA / UPC I / UPC II อ้างอิงจาก SHOP LIST (MAN&SHOPLIST)',note:(()=>{const n=R.filter(r=>r.region===UNK).reduce((a,r)=>a+r.n,0);return n?`* ${fmt(n)} รายการ ไม่ระบุ Area จึงจัด Region ไม่ได้`:'';})(),cols:(()=>{const c=STD_COLS('Region');c[0].regSort=true;return c;})(),rows:regRows,total:{key:'รวม',...T},sort:['key',1]});
   pivotTable('#t-regionDate',{id:'regionDate',title:'Region × Date',tag:'1.4',recs:R,keyFn:r=>r.region,keyLabel:'Region',regSort:true});
   const aCols=STD_COLS('Area');aCols[0].areaSort=true;
   table('#t-area',{id:'area',title:'สรุป BY AREA (ครบ 15 Area)',tag:'1.5',cols:aCols,rows:[...agg(R,r=>r.area).values()],total:{key:'รวม',...T},sort:['key',1]});
@@ -643,7 +651,7 @@ function staffModel(){
   const list=[];
   const mk=(id,m,s)=>{let shop=m&&/^\d+$/.test(m.shopCode)?m.shopCode:null;let info=shop?MODEL.shopInfo.get(shop):null;
     if(!info||info.area===UNK){const alt=dom((s&&s.shops)||allShops.get(id)||{});if(alt&&MODEL.shopInfo.get(alt)){shop=shop||alt;info=info&&info.area!==UNK?info:MODEL.shopInfo.get(alt);}}
-    const area=info?info.area:UNK;const region=MODEL.M.regionOf(area);
+    const area=info?info.area:UNK;const region=MODEL.M.regionOf(area,shop);
     const shopLabel=info?info.label:(m?m.shopName||m.shopCode:UNK);
     const o={id,name:m?m.name:'',type:m?m.type||UNK:UNK,company:m?m.company:'',shopCode:shop||'',shopLabel,area,zone:zoneOf(area),region,yes:s?s.yes:0,no:s?s.no:0,tot:s?s.tot:0,inM:m?'MAN LIST':'ไม่พบใน MAN LIST'};
     o.pct=pct(o.yes,o.tot);o.status=o.yes>0?'Redeem แล้ว':o.tot>0?'ขายแต่ยังไม่ Redeem':'ไม่มียอดขาย';o.disp=o.name?o.name:o.id;return o;};
@@ -830,7 +838,7 @@ async function publishGitHub(which,mid){
 let ART=null;
 async function publishData(which){
   const btn=$(which==='redeem'?'#pubRedeem':'#pubMaster');const mid=which==='redeem'?'#msgRedeem':'#msgMaster';btn.disabled=true;
-  if(GH_MODE){try{await publishGitHub(which,mid);rebuild();msg(mid,'ok','✓ Commit ขึ้น GitHub แล้ว — ผู้ใช้ทุกคนจะเห็นข้อมูลใหม่อัตโนมัติภายใน ~1–2 นาที (หลัง GitHub Pages deploy เสร็จ)');toast('อัปเดตข้อมูลขึ้น GitHub สำเร็จ');$(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');}catch(e){rebuild();msg(mid,'er','บันทึกขึ้น GitHub ไม่สำเร็จ: '+esc(e.message)+' — ข้อมูลใหม่แสดงเฉพาะเครื่องนี้ชั่วคราว');}finally{btn.disabled=false;}return;}
+  if(GH_MODE){try{await publishGitHub(which,mid);rebuild();msg(mid,'ok','✓ Commit ขึ้น GitHub แล้ว — หน้าจอทุกคนจะรีเฟรชข้อมูลเองทันทีที่ GitHub deploy เสร็จ (~1 นาที)');toast('อัปเดตข้อมูลขึ้น GitHub สำเร็จ');$(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');}catch(e){rebuild();msg(mid,'er','บันทึกขึ้น GitHub ไม่สำเร็จ: '+esc(e.message)+' — ข้อมูลใหม่แสดงเฉพาะเครื่องนี้ชั่วคราว');}finally{btn.disabled=false;}return;}
   try{
     if(!ART)ART=await claude.use('artifact');
     if(!ART)throw {code:'unavailable'};
@@ -856,7 +864,7 @@ $('#tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)r
 function go(v){if(v==='admin'&&ROLE!=='admin')v='dash';VIEW=v;$$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.v===v));$$('.view').forEach(x=>x.classList.toggle('active',x.id==='v-'+v));try{history.replaceState(null,'','#'+v);}catch(e){}renderView();}
 function renderView(){if(!MODEL)return;if(VIEW==='dash')renderDash();else if(VIEW==='staff')renderStaff();else if(VIEW==='camp')renderCamp();else if(VIEW==='admin')renderAdmin();}
 function renderAll(){renderView();}
-function renderDataInfo(){const rm=RED.meta||{},mm=MAS.meta||{};const ds=[...new Set(MODEL.recs.map(r=>r.d))].filter(Boolean).sort();$('#dataInfo').innerHTML=`ข้อมูล Redeem: <b>${esc(rm.fileName||'-')}</b> · ${fmt(RAW.rows.length)} แถว · ${ds[0]||''} – ${ds[ds.length-1]||''} · อัปเดต ${esc(rm.uploadedAt||'-')} &nbsp;|&nbsp; Master: <b>${esc(mm.fileName||'-')}</b> · อัปเดต ${esc(mm.uploadedAt||'-')}`+(GH_MODE?' &nbsp;|&nbsp; <b style="color:var(--pink)">● LIVE</b> เช็คข้อมูลใหม่อัตโนมัติทุก 1 นาที':'');}
+function renderDataInfo(){const rm=RED.meta||{},mm=MAS.meta||{};const ds=[...new Set(MODEL.recs.map(r=>r.d))].filter(Boolean).sort();$('#dataInfo').innerHTML=`ข้อมูล Redeem: <b>${esc(rm.fileName||'-')}</b> · ${fmt(RAW.rows.length)} แถว · ${ds[0]||''} – ${ds[ds.length-1]||''} · อัปเดต ${esc(rm.uploadedAt||'-')} &nbsp;|&nbsp; Master: <b>${esc(mm.fileName||'-')}</b> · อัปเดต ${esc(mm.uploadedAt||'-')}`+(GH_MODE?' &nbsp;|&nbsp; <b style="color:var(--pink)">● LIVE</b> อัปเดตอัตโนมัติ (เช็คทุก 15 วินาที · ล่าสุด <span id="lastCheck">'+lastCheck+'</span>)':'');}
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(['dash','staff','camp','admin'].includes(h)&&h!==VIEW)go(h);});
 (function init(){const h=location.hash.slice(1);if(['dash','staff','camp','admin'].includes(h))VIEW=h;const r=ssGet('tvsRole');if(r==='admin'||r==='user'){enter(r);go(VIEW);}})();
 </script>
