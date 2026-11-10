@@ -42,5 +42,5 @@ if __name__ == '__main__':
     os.makedirs('data', exist_ok=True)
     if 'redeem' in newest: convert.convert_redeem(newest['redeem'], 'data', 'github')
     if 'master' in newest: convert.convert_master(newest['master'], 'data', 'github')
-    convert.write_version('data')
+    if newest: convert.write_version('data')
     print('updated:', newest or 'none')

@@ -5,9 +5,8 @@ Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) ·
 - รหัส Admin: `ADMIN5555` · รหัส User: `WW5555` (เป็นการกั้นหน้าจอเท่านั้น ไม่ใช่การเข้ารหัสข้อมูล)
 - เปิดผ่าน GitHub Pages: `https://prasertkead-svg.github.io/tvs-now-redeem-dashboard/`
 
-## ตั้งค่าครั้งแรก (ทำครั้งเดียว)
-1. **Settings → Pages → Build and deployment → Source: `GitHub Actions`**
-2. ไปที่ **Actions** → `Update data & deploy dashboard` → **Run workflow** (หรือ push อะไรก็ได้) รอ ~1 นาที
+## ตั้งค่า GitHub Pages
+**Settings → Pages → Source: `Deploy from a branch` → Branch: `main` / `(root)`** (ตั้งไว้แล้ว)
 
 ## อัปเดตข้อมูล — Dashboard อัปเดตเองอัตโนมัติ
 หน้าเว็บเช็คข้อมูลใหม่ทุก 15 วินาที (และทุกครั้งที่กลับมาที่แท็บ / กดปุ่ม 🔄) — ข้อมูลเปลี่ยนเองโดยไม่ต้องรีเฟรช
@@ -20,7 +19,7 @@ Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) ·
 **วิธี B — อัปโหลดผ่านหน้า Admin ของ Dashboard**
 1. Login ด้วย `ADMIN5555` → แท็บ ⚙ Admin → การ์ด **เชื่อมต่อ GitHub** ใส่ Fine-grained Token
    (Repository access: เฉพาะ repo นี้ · Permissions: **Contents → Read and write**) → บันทึก → ทดสอบ
-2. ลากไฟล์ Excel ลงช่องอัปโหลด → **บันทึก & เผยแพร่ให้ทุกคน** (Commit ขึ้น GitHub ให้ทันที)
+2. ลากไฟล์ Excel ลงช่องอัปโหลด → ข้อมูลแสดงบนหน้าจอทันที (Mapping ใหม่) → กด **📢 เผยแพร่ให้ทุกคน** (Commit ขึ้น GitHub)
 
 ## โครงสร้าง
 | ไฟล์ | รายละเอียด |
@@ -31,7 +30,7 @@ Dashboard ติดตามการ Redeem TVS Now (Redeem-Yes / Redeem-No) ·
 | `input/` | ที่เก็บไฟล์ Excel ต้นฉบับ (อัปโหลดที่อื่นก็ได้) |
 | `scripts/auto_update.py` | หาไฟล์ Excel ที่อัปโหลด แยกประเภทจากหัวคอลัมน์ แล้วแปลง |
 | `scripts/convert.py` | แปลง Excel → JSON (หา Sheet ให้อัตโนมัติ ไม่ยึดชื่อไฟล์) |
-| `.github/workflows/deploy.yml` | แปลงข้อมูล + deploy GitHub Pages อัตโนมัติ |
+| `.github/workflows/deploy.yml` | แปลงไฟล์ Excel ที่อัปโหลดเป็น `data/*.json` (Pages build ใหม่เอง) |
 
 เปิดในเครื่อง: `python3 -m http.server` แล้วเข้า `http://localhost:8000`
 

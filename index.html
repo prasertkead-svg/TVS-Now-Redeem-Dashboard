@@ -181,6 +181,10 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
 .chip{display:inline-flex;align-items:center;gap:6px;background:var(--pinkSoft);border:1px solid rgba(230,0,126,.35);color:var(--pink);padding:3px 4px 3px 10px;border-radius:20px}
 .chip b{font-weight:500}
 .chip button{border:0;background:#fff;color:var(--pink);width:18px;height:18px;border-radius:50%;cursor:pointer;line-height:1;font-size:12px;padding:0}
+.pubbox{margin-top:12px;padding:12px;border-radius:12px;border:1.5px solid var(--pink);background:var(--pinkSoft);display:grid;gap:10px}
+.pubtxt{font-size:13px;color:var(--ink2)}
+.tokrow{display:flex}
+.btn.big{padding:10px 20px;font-size:15px}
 .hide{display:none!important}
 </style>
 </head>
@@ -287,13 +291,13 @@ table.t.wrapall td .trunc{max-width:none;white-space:normal}
       <div class="kv" id="curRedeem"></div>
       <div class="drop" id="dropRedeem" style="margin-top:12px"><div class="big">⤒ ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</div><div class="note">.xlsx / .xls / .csv</div><input type="file" id="fileRedeem" accept=".xlsx,.xls,.xlsb,.csv" hidden></div>
       <div class="msg" id="msgRedeem"></div>
-      <div id="actRedeem" class="hide" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="pubRedeem">บันทึก & เผยแพร่ให้ทุกคน</button><button class="btn" id="locRedeem">ดูเฉพาะเครื่องนี้ (ไม่บันทึก)</button></div>
+      <div id="actRedeem" class="hide pubbox"><div class="pubtxt">✓ ข้อมูลใหม่แสดงบนหน้าจอนี้แล้ว (Mapping ใหม่ทันที) — ตรวจดูแล้วกด <b>เผยแพร่</b> เพื่อให้ทุกคนเห็น</div><div class="tokrow hide"><input class="search" type="password" placeholder="ใส่ GitHub Token (ครั้งแรกครั้งเดียว) github_pat_..." style="flex:1;min-width:240px"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary big" id="pubRedeem">📢 เผยแพร่ให้ทุกคน</button><button class="btn" id="locRedeem">↩ ยกเลิก (กลับข้อมูลเดิม)</button></div></div>
     </div></div>
     <div class="card"><div class="card-h"><h3><span class="tag">A2</span>อัปเดตไฟล์ MAN &amp; SHOP LIST</h3><span class="sub">ต้องมี Sheet ที่มี EMP_ID (MAN LIST) และ SHOP CODE (SHOP LIST)</span></div><div class="card-b">
       <div class="kv" id="curMaster"></div>
       <div class="drop" id="dropMaster" style="margin-top:12px"><div class="big">⤒ ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</div><div class="note">.xlsx / .xls</div><input type="file" id="fileMaster" accept=".xlsx,.xls,.xlsb" hidden></div>
       <div class="msg" id="msgMaster"></div>
-      <div id="actMaster" class="hide" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="pubMaster">บันทึก & เผยแพร่ให้ทุกคน</button><button class="btn" id="locMaster">ดูเฉพาะเครื่องนี้ (ไม่บันทึก)</button></div>
+      <div id="actMaster" class="hide pubbox"><div class="pubtxt">✓ ข้อมูลใหม่แสดงบนหน้าจอนี้แล้ว (Mapping ใหม่ทันที) — ตรวจดูแล้วกด <b>เผยแพร่</b> เพื่อให้ทุกคนเห็น</div><div class="tokrow hide"><input class="search" type="password" placeholder="ใส่ GitHub Token (ครั้งแรกครั้งเดียว) github_pat_..." style="flex:1;min-width:240px"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary big" id="pubMaster">📢 เผยแพร่ให้ทุกคน</button><button class="btn" id="locMaster">↩ ยกเลิก (กลับข้อมูลเดิม)</button></div></div>
     </div></div>
   </div>
   <div class="card" id="c-gh" style="margin-top:14px"><div class="card-h"><h3><span class="tag">GIT</span>เชื่อมต่อ GitHub (สำหรับ Admin)</h3><span class="sub">ปุ่ม "บันทึก & เผยแพร่" จะ Commit ข้อมูลขึ้น GitHub แล้ว Dashboard อัปเดตให้ทุกคนอัตโนมัติ (~1–2 นาที)</span></div><div class="card-b">
@@ -801,7 +805,7 @@ function msg(id,cls,t){const m=$(id);m.className='msg show '+cls;m.innerHTML=t;}
 let pending={redeem:null,master:null};
 function setupDrop(drop,input,handler){const d=$(drop),i=$(input);d.onclick=()=>i.click();i.onchange=()=>i.files[0]&&handler(i.files[0]);d.ondragover=e=>{e.preventDefault();d.classList.add('over');};d.ondragleave=()=>d.classList.remove('over');d.ondrop=e=>{e.preventDefault();d.classList.remove('over');e.dataTransfer.files[0]&&handler(e.dataTransfer.files[0]);};}
 setupDrop('#dropRedeem','#fileRedeem',async f=>{
-  msg('#msgRedeem','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actRedeem').classList.add('hide');
+  msg('#msgRedeem','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actRedeem').classList.add('hide');if(!window.XLSX){msg('#msgRedeem','er','โหลดตัวอ่าน Excel ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วรีเฟรชหน้า');return;}
   try{const wb=await readWorkbook(f);let found=null;
     for(const n of wb.SheetNames){const aoa=sheetAoa(wb.Sheets[n]);const h=findHeader(aoa,['STATUS_REDEEM','PARTNER_CODE']);if(h>=0){found={n,aoa,h};break;}}
     if(!found)throw new Error('ไม่พบ Sheet ที่มีคอลัมน์ STATUS_REDEEM และ PARTNER_CODE');
@@ -810,21 +814,29 @@ setupDrop('#dropRedeem','#fileRedeem',async f=>{
     if(miss.length)throw new Error('ไม่พบคอลัมน์: '+miss.join(', '));
     const iS=colIdx(t.cols,['STATUS_REDEEM']),iD=colIdx(t.cols,['TM_KEY_DATE']);let y=0;const ds=new Set();t.rows.forEach(r=>{if(String(r[iS]).toUpperCase().includes('YES'))y++;ds.add(normDate(r[iD]));});const dl=[...ds].filter(Boolean).sort();
     pending.redeem={cols:t.cols,rows:t.rows,meta:{fileName:f.name,sheet:found.n,uploadedAt:stamp(),by:'admin'}};
-    msg('#msgRedeem','ok',`อ่านไฟล์สำเร็จ · Sheet <b>${esc(found.n)}</b> · <b>${fmt(t.rows.length)}</b> แถว · ${t.cols.length} คอลัมน์ · วันที่ ${dl[0]||'-'} – ${dl[dl.length-1]||'-'} · Redeem-Yes ${fmt(y)} (${fp(pct(y,t.rows.length))})`);
-    $('#actRedeem').classList.remove('hide');
+    if(!prev.redeem)prev.redeem={RED,RAW};applyRedeem();delete F.m;delete F.d;defaultMonthSet=false;rebuild();
+    const cov=mappingCoverage();
+    msg('#msgRedeem','ok',`Mapping กับ Master: สาขา ${fp(cov.shop)} · Staff ${fp(cov.staff)}<br>อ่านไฟล์สำเร็จ · Sheet <b>${esc(found.n)}</b> · <b>${fmt(t.rows.length)}</b> แถว · ${t.cols.length} คอลัมน์ · วันที่ ${dl[0]||'-'} – ${dl[dl.length-1]||'-'} · Redeem-Yes ${fmt(y)} (${fp(pct(y,t.rows.length))})`);
+    showAct('redeem');
   }catch(e){msg('#msgRedeem','er','อ่านไฟล์ไม่สำเร็จ: '+esc(e.message));}
 });
 setupDrop('#dropMaster','#fileMaster',async f=>{
-  msg('#msgMaster','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actMaster').classList.add('hide');
+  msg('#msgMaster','in','กำลังอ่านไฟล์ '+esc(f.name)+' ...');$('#actMaster').classList.add('hide');if(!window.XLSX){msg('#msgMaster','er','โหลดตัวอ่าน Excel ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วรีเฟรชหน้า');return;}
   try{const wb=await readWorkbook(f);const out={meta:{fileName:f.name,uploadedAt:stamp(),by:'admin'}};
     for(const n of wb.SheetNames){const aoa=sheetAoa(wb.Sheets[n]);let h=findHeader(aoa,['EMP_ID']);if(h>=0&&!out.man){out.man=trimTbl(aoa[h],aoa.slice(h+1));continue;}h=findHeader(aoa,['SHOP CODE']);if(h<0)h=findHeader(aoa,['SHOP_CODE','AREA']);if(h>=0&&!out.shop)out.shop=trimTbl(aoa[h],aoa.slice(h+1));}
     if(!out.man&&!out.shop)throw new Error('ไม่พบ Sheet MAN LIST (EMP_ID) หรือ SHOP LIST (SHOP CODE)');
     if(!out.man){out.man=MAS.man;out.meta.note='ใช้ MAN LIST เดิม';}if(!out.shop){out.shop=MAS.shop;out.meta.note='ใช้ SHOP LIST เดิม';}
     pending.master=out;
-    msg('#msgMaster','ok',`อ่านไฟล์สำเร็จ · MAN LIST <b>${fmt(out.man.rows.length)}</b> แถว · SHOP LIST <b>${fmt(out.shop.rows.length)}</b> สาขา${out.meta.note?' · '+out.meta.note:''}`);
-    $('#actMaster').classList.remove('hide');
+    const oldM=MODEL.M;if(!prev.master)prev.master=MAS;applyMaster();rebuild();const nM=MODEL.M;
+    const newShops=[...nM.shops.keys()].filter(k=>!oldM.shops.has(k)).length,goneShops=[...oldM.shops.keys()].filter(k=>!nM.shops.has(k)).length;
+    const newStaff=[...nM.man.keys()].filter(k=>!oldM.man.has(k)).length,goneStaff=[...oldM.man.keys()].filter(k=>!nM.man.has(k)).length;
+    const cov=mappingCoverage();
+    msg('#msgMaster','ok',`อ่านไฟล์สำเร็จ · MAN LIST <b>${fmt(out.man.rows.length)}</b> แถว · SHOP LIST <b>${fmt(out.shop.rows.length)}</b> สาขา${out.meta.note?' · '+out.meta.note:''}<br>เทียบกับเดิม: สาขาใหม่ <b>+${fmt(newShops)}</b> / ออก ${fmt(goneShops)} · Staff ใหม่ <b>+${fmt(newStaff)}</b> / ออก ${fmt(goneStaff)}<br>Mapping กับข้อมูล Redeem: สาขา <b>${fp(cov.shop)}</b> · Staff <b>${fp(cov.staff)}</b> (ของรายการทั้งหมด)`);
+    showAct('master');
   }catch(e){msg('#msgMaster','er','อ่านไฟล์ไม่สำเร็จ: '+esc(e.message));}
 });
+let prev={redeem:null,master:null};
+function mappingCoverage(){const R=MODEL.recs;if(!R.length)return {shop:null,staff:null};let s=0,t=0;R.forEach(r=>{if(r.inShopList)s++;if(MODEL.M.man.has(r.staff))t++;});return {shop:pct(s,R.length),staff:pct(t,R.length)};}
 function applyRedeem(){const p=pending.redeem;RED=encodeRedeem(p.cols,p.rows,p.meta);RAW={cols:p.cols,rows:p.rows};}
 function applyMaster(){MAS=pending.master;}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
@@ -847,7 +859,7 @@ async function ghPut(c,path,content,message){
 }
 function verStr(j,str){const m=j.meta||{};return `${m.fileName||''}|${m.uploadedAt||''}|${new TextEncoder().encode(str).length}`;}
 async function publishGitHub(which,mid){
-  const c=ghCfg();if(!c.token)throw new Error('ยังไม่ได้ใส่ GitHub Token (ดูการ์ด "เชื่อมต่อ GitHub" ด้านล่าง)');
+  const c=ghCfg();if(!c.token){showAct(which);throw new Error('กรุณาใส่ GitHub Token ในช่องด้านบน แล้วกดเผยแพร่อีกครั้ง');}
   if(which==='redeem')applyRedeem();else applyMaster();
   const obj=which==='redeem'?RED:MAS;const str=JSON.stringify(obj);
   msg(mid,'in','กำลังอัปโหลดขึ้น GitHub... ('+fmt(str.length/1024)+' KB)');
@@ -856,10 +868,13 @@ async function publishGitHub(which,mid){
   await ghPut(c,'data/version.json',JSON.stringify(v),'Update data version');
   VER=v;
 }
+function showAct(which){const a=$(which==='redeem'?'#actRedeem':'#actMaster');a.classList.remove('hide');const tr=a.querySelector('.tokrow');tr.classList.toggle('hide',!(GH_MODE&&!ghCfg().token));}
 let ART=null;
 async function publishData(which){
+  const a=$(which==='redeem'?'#actRedeem':'#actMaster');const ti=a.querySelector('.tokrow input');
+  if(GH_MODE&&ti&&ti.value.trim()){const c=ghCfg();c.token=ti.value.trim();lsSet('tvsGh',JSON.stringify(c));ti.value='';a.querySelector('.tokrow').classList.add('hide');}
   const btn=$(which==='redeem'?'#pubRedeem':'#pubMaster');const mid=which==='redeem'?'#msgRedeem':'#msgMaster';btn.disabled=true;
-  if(GH_MODE){try{await publishGitHub(which,mid);rebuild();msg(mid,'ok','✓ Commit ขึ้น GitHub แล้ว — หน้าจอทุกคนจะรีเฟรชข้อมูลเองทันทีที่ GitHub deploy เสร็จ (~1 นาที)');toast('อัปเดตข้อมูลขึ้น GitHub สำเร็จ');$(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');}catch(e){rebuild();msg(mid,'er','บันทึกขึ้น GitHub ไม่สำเร็จ: '+esc(e.message)+' — ข้อมูลใหม่แสดงเฉพาะเครื่องนี้ชั่วคราว');}finally{btn.disabled=false;}return;}
+  if(GH_MODE){try{await publishGitHub(which,mid);rebuild();msg(mid,'ok','✓ Commit ขึ้น GitHub แล้ว — หน้าจอทุกคนจะรีเฟรชข้อมูลเองทันทีที่ GitHub deploy เสร็จ (~1 นาที)');toast('อัปเดตข้อมูลขึ้น GitHub สำเร็จ');prev[which]=null;$(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');}catch(e){rebuild();msg(mid,'er','บันทึกขึ้น GitHub ไม่สำเร็จ: '+esc(e.message)+' — ข้อมูลใหม่แสดงเฉพาะเครื่องนี้ชั่วคราว');}finally{btn.disabled=false;}return;}
   try{
     if(!ART)ART=await claude.use('artifact');
     if(!ART)throw {code:'unavailable'};
@@ -867,7 +882,7 @@ async function publishData(which){
     const files=which==='redeem'?{'data/redeem.json':{content:JSON.stringify(RED),contentType:'application/json'}}:{'data/master.json':{content:JSON.stringify(MAS),contentType:'application/json'}};
     msg(mid,'in','กำลังบันทึกและเผยแพร่...');
     await ART.publish(files);
-    rebuild();msg(mid,'ok','✓ บันทึกเรียบร้อย ผู้ใช้ทุกคนจะเห็นข้อมูลใหม่เมื่อเปิด/รีเฟรชหน้า');toast('อัปเดตข้อมูลสำเร็จ');
+    prev[which]=null;rebuild();msg(mid,'ok','✓ บันทึกเรียบร้อย ผู้ใช้ทุกคนจะเห็นข้อมูลใหม่เมื่อเปิด/รีเฟรชหน้า');toast('อัปเดตข้อมูลสำเร็จ');
     $(which==='redeem'?'#actRedeem':'#actMaster').classList.add('hide');
   }catch(e){
     const c=e&&e.code;rebuild();
@@ -876,8 +891,8 @@ async function publishData(which){
   }finally{btn.disabled=false;}
 }
 $('#pubRedeem').onclick=()=>publishData('redeem');$('#pubMaster').onclick=()=>publishData('master');
-$('#locRedeem').onclick=()=>{applyRedeem();defaultMonthSet=false;F={};rebuild();msg('#msgRedeem','in','แสดงข้อมูลใหม่เฉพาะเครื่องนี้ (ยังไม่บันทึก) — รีเฟรชหน้าจะกลับเป็นข้อมูลเดิม');};
-$('#locMaster').onclick=()=>{applyMaster();rebuild();msg('#msgMaster','in','แสดงข้อมูลใหม่เฉพาะเครื่องนี้ (ยังไม่บันทึก)');};
+$('#locRedeem').onclick=()=>{if(prev.redeem){RED=prev.redeem.RED;RAW=prev.redeem.RAW;prev.redeem=null;}rebuild();$('#actRedeem').classList.add('hide');msg('#msgRedeem','in','ยกเลิกแล้ว — กลับเป็นข้อมูลเดิม');};
+$('#locMaster').onclick=()=>{if(prev.master){MAS=prev.master;prev.master=null;}rebuild();$('#actMaster').classList.add('hide');msg('#msgMaster','in','ยกเลิกแล้ว — กลับเป็นข้อมูลเดิม');};
 
 /* ====================== routing ====================== */
 let VIEW='dash';
